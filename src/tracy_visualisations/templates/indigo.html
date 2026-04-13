@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+  <title>Tracy — Indigo View</title>
+  <link rel="stylesheet"
+        href="https://www.gear-genomics.com/libs/bootstrap/4.0.0/css/bootstrap.min.css"
+        crossorigin="anonymous">
+  <style>
+    body { padding-top: 1.5rem; padding-bottom: 3rem; }
+    trace-view, alignment-view, decomposition-view, variants-view { display: block; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2 class="mb-3">Tracy — Indigo View</h2>
+  <p class="text-muted small">Source: <strong>{{filename}}</strong></p>
+
+  <div class="form-row align-items-center mb-3">
+    <div class="col-auto">
+      <select class="form-control" id="tocSelect"
+              onchange="handleTocChange(this)">
+        <option value="#">-- Jump to section --</option>
+        <option value="trace-chart">Trace &amp; basecall viewer</option>
+        <option value="alignment-chart-1">Alt1 Alignment</option>
+        <option value="alignment-chart-2">Alt2 Alignment</option>
+        <option value="alignment-chart-3">Alt1 vs Alt2 Alignment</option>
+        <option value="variants-table">Variants</option>
+        <option value="decomposition-chart">Decomposition plot</option>
+      </select>
+    </div>
+  </div>
+
+  <h4>Trace &amp; basecall viewer</h4>
+  <trace-view id="trace-chart"></trace-view>
+
+  <h4 class="mt-4">Alt1 Alignment</h4>
+  <alignment-view id="alignment-chart-1"></alignment-view>
+
+  <h4 class="mt-4">Alt2 Alignment</h4>
+  <alignment-view id="alignment-chart-2"></alignment-view>
+
+  <h4 class="mt-4">Alt1 vs Alt2 Alignment</h4>
+  <alignment-view id="alignment-chart-3"></alignment-view>
+
+  <h4 class="mt-4">Variants</h4>
+  <variants-view id="variants-table" style="overflow-x: auto;"></variants-view>
+
+  <h4 class="mt-4">Decomposition plot</h4>
+  <decomposition-view id="decomposition-chart"></decomposition-view>
+</div>
+
+<script src="https://www.gear-genomics.com/libs/js/plotly-1.39.2.min.js"
+        crossorigin="anonymous"></script>
+<script>
+{{indigo_js}}
+</script>
+<script>
+(function () {
+  var data = {{data_json}};
+
+  function ungappedLocal(seq) { return seq.replace(/-/g, ''); }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var traceChart        = document.getElementById('trace-chart');
+    var alignmentChart1   = document.getElementById('alignment-chart-1');
+    var alignmentChart2   = document.getElementById('alignment-chart-2');
+    var alignmentChart3   = document.getElementById('alignment-chart-3');
+    var variantsTable     = document.getElementById('variants-table');
+    var decompositionChart = document.getElementById('decomposition-chart');
+
+    if (traceChart && typeof traceChart.displayData === 'function') {
+      traceChart.displayData(data);
+    }
+    if (decompositionChart && typeof decompositionChart.displayData === 'function') {
+      decompositionChart.displayData(data);
+    }
+
+    var alignmentCharactersPerLine = 80;
+
+    var alt1 = {
+      sequence: ungappedLocal(data.alt1align || ''),
+      alignmentString: data.alt1align || '',
+      isReverseComplement: false,
+      chromosome: 'Alt1',
+      startPosition: 1,
+      label: 'Alt1',
+      alleleFraction: data.allele1fraction
+    };
+    var ref1 = {
+      sequence: ungappedLocal(data.ref1align || ''),
+      alignmentString: data.ref1align || '',
+      isReverseComplement: data.ref1forward === 0,
+      chromosome: data.ref1chr || '',
+      startPosition: data.ref1pos || 1,
+      label: 'Ref'
+    };
+    if (alignmentChart1 && typeof alignmentChart1.displayData === 'function') {
+      alignmentChart1.displayData({
+        alt: alt1, ref: ref1,
+        charactersPerLine: alignmentCharactersPerLine,
+        score: data.align1score || undefined
+      });
+    }
+
+    var alt2 = {
+      sequence: ungappedLocal(data.alt2align || ''),
+      alignmentString: data.alt2align || '',
+      isReverseComplement: false,
+      chromosome: 'Alt2',
+      startPosition: 1,
+      label: 'Alt2',
+      alleleFraction: data.allele2fraction
+    };
+    var ref2 = {
+      sequence: ungappedLocal(data.ref2align || ''),
+      alignmentString: data.ref2align || '',
+      isReverseComplement: data.ref2forward === 0,
+      chromosome: data.ref2chr || '',
+      startPosition: data.ref2pos || 1,
+      label: 'Ref'
+    };
+    if (alignmentChart2 && typeof alignmentChart2.displayData === 'function') {
+      alignmentChart2.displayData({
+        alt: alt2, ref: ref2,
+        charactersPerLine: alignmentCharactersPerLine,
+        score: data.align2score || undefined
+      });
+    }
+
+    var alt3 = Object.assign({}, alt1, { alignmentString: data.allele1align || '' });
+    var ref3 = Object.assign({}, alt2, { alignmentString: data.allele2align || '' });
+    if (alignmentChart3 && typeof alignmentChart3.displayData === 'function') {
+      alignmentChart3.displayData({
+        alt: alt3, ref: ref3,
+        charactersPerLine: alignmentCharactersPerLine,
+        score: data.align3score || undefined
+      });
+    }
+
+    if (variantsTable && typeof variantsTable.displayData === 'function') {
+      variantsTable.displayData(data, traceChart);
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "gappedTrace": {
+    "traceFileName": "sample.ab1",
+    "leadingGaps": 0,
+    "trailingGaps": 0,
+    "peakA": [0, 10, 50, 200, 180, 20, 0, 0, 0, 0, 0, 0, 0, 5, 0],
+    "peakC": [0, 0, 0, 0, 0, 0, 300, 250, 10, 0, 0, 0, 0, 0, 0],
+    "peakG": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 250, 300, 0, 0],
+    "peakT": [0, 0, 0, 0, 5, 100, 0, 0, 350, 300, 50, 0, 0, 0, 0],
+    "basecallPos": [3, 6, 8, 11],
+    "basecallQual": [40, 38, 35, 42],
+    "basecalls": {
+      "3": "1:A",
+      "6": "2:C",
+      "8": "3:T",
+      "11": "4:G"
+    }
+  },
+  "refchr": "chr1",
+  "refpos": 100,
+  "refalign": "ACTG",
+  "forward": 1
+}

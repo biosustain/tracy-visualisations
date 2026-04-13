@@ -1,0 +1,42 @@
+{
+  "pos": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  "peakA": [0, 10, 50, 200, 180, 20, 0, 0, 0, 0],
+  "peakC": [0, 0, 0, 0, 0, 0, 300, 250, 10, 0],
+  "peakG": [0, 0, 0, 0, 0, 0, 0, 0, 0, 250],
+  "peakT": [0, 0, 0, 0, 5, 100, 0, 0, 350, 0],
+  "basecalls": {
+    "3": "1:A",
+    "6": "2:C",
+    "8": "3:T"
+  },
+  "alt1align": "ACT-G",
+  "ref1align": "ACTGG",
+  "alt2align": "ACT-G",
+  "ref2align": "ACTGG",
+  "allele1align": "ACT-G",
+  "allele2align": "ACTGG",
+  "ref1chr": "chr1",
+  "ref1pos": 100,
+  "ref1forward": 1,
+  "ref2chr": "chr1",
+  "ref2pos": 100,
+  "ref2forward": 1,
+  "allele1fraction": 0.52,
+  "allele2fraction": 0.48,
+  "align1score": 95,
+  "align2score": 90,
+  "align3score": 85,
+  "decomposition": {
+    "title": "Decomposition",
+    "x": [-3, -2, -1, 0, 1, 2, 3],
+    "y": [0.9, 0.7, 0.4, 0.1, 0.4, 0.7, 0.9]
+  },
+  "variants": {
+    "columns": ["Chr", "Pos", "Ref", "Alt", "Type"],
+    "rows": [
+      ["chr1", "104", "G", "T", "SNV"]
+    ],
+    "xranges": [[3, 9]]
+  },
+  "url": "dummyurl"
+}
