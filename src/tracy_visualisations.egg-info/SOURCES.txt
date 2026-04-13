@@ -1,0 +1,17 @@
+README.md
+pyproject.toml
+src/tracy_visualisations/__init__.py
+src/tracy_visualisations/__main__.py
+src/tracy_visualisations/bundler.py
+src/tracy_visualisations.egg-info/PKG-INFO
+src/tracy_visualisations.egg-info/SOURCES.txt
+src/tracy_visualisations.egg-info/dependency_links.txt
+src/tracy_visualisations.egg-info/entry_points.txt
+src/tracy_visualisations.egg-info/requires.txt
+src/tracy_visualisations.egg-info/top_level.txt
+src/tracy_visualisations/js/__init__.py
+src/tracy_visualisations/js/indigoComponents.js
+src/tracy_visualisations/js/traceView.js
+src/tracy_visualisations/templates/__init__.py
+src/tracy_visualisations/templates/indigo.html
+src/tracy_visualisations/templates/trace.html

@@ -1,0 +1,2 @@
+[console_scripts]
+tracy-vis = tracy_visualisations.__main__:main

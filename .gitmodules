@@ -1,0 +1,6 @@
+[submodule "src/tracy_visualisations/vendor/sage"]
+	path = src/tracy_visualisations/vendor/sage
+	url = https://github.com/gear-genomics/sage
+[submodule "src/tracy_visualisations/vendor/indigo"]
+	path = src/tracy_visualisations/vendor/indigo
+	url = https://github.com/gear-genomics/indigo

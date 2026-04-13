@@ -1,0 +1,19 @@
+Metadata-Version: 2.4
+Name: tracy-visualisations
+Version: 0.1.0
+Summary: Bundle Tracy JSON output with web visualisation components into self-contained HTML files
+License: MIT
+Keywords: bioinformatics,sanger,chromatogram,visualisation
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Bio-Informatics
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: requests>=2.20
+Provides-Extra: dev
+Requires-Dist: pytest>=7; extra == "dev"
+Requires-Dist: responses>=0.23; extra == "dev"
+
+# tracy-visualisations
