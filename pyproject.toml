@@ -17,9 +17,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
 ]
-dependencies = [
-    "requests>=2.20",
-]
+dependencies = []
 
 [project.optional-dependencies]
 dev = [
@@ -34,7 +32,11 @@ tracy-vis = "tracy_visualisations.__main__:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"tracy_visualisations" = ["js/*.js", "templates/*.html"]
+"tracy_visualisations" = [
+    "vendor/sage/client/src/static/js/traceView.js",
+    "vendor/indigo/client/src/static/js/indigo.js",
+    "templates/*.html",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -15,6 +15,72 @@ SAMPLE_INDIGO = DATA_DIR / "sample_indigo.json"
 
 
 # ---------------------------------------------------------------------------
+# JS transformation helpers
+# ---------------------------------------------------------------------------
+
+class TestAdaptTraceviewJs:
+    def _adapted(self):
+        from tracy_visualisations.bundler import (
+            _adapt_traceview_js,
+            _read_vendor_js,
+            _VENDOR_SAGE_JS,
+        )
+        return _adapt_traceview_js(_read_vendor_js(_VENDOR_SAGE_JS))
+
+    def test_removes_export_default(self):
+        assert "export default" not in self._adapted()
+
+    def test_keeps_class_definition(self):
+        assert "class TraceViewElement" in self._adapted()
+
+    def test_adds_custom_elements_define(self):
+        assert 'customElements.define("trace-view"' in self._adapted()
+
+    def test_guards_against_double_registration(self):
+        assert 'customElements.get("trace-view")' in self._adapted()
+
+
+class TestAdaptIndigoJs:
+    def _adapted(self):
+        from tracy_visualisations.bundler import (
+            _adapt_indigo_js,
+            _read_vendor_js,
+            _VENDOR_INDIGO_JS,
+        )
+        return _adapt_indigo_js(_read_vendor_js(_VENDOR_INDIGO_JS))
+
+    def test_removes_import_statement(self):
+        assert "import {" not in self._adapted()
+
+    def test_removes_process_env(self):
+        assert "process.env" not in self._adapted()
+
+    def test_removes_api_calls(self):
+        assert "API_URL}/upload" not in self._adapted()
+
+    def test_keeps_alignment_view_element(self):
+        assert "AlignmentViewElement" in self._adapted()
+
+    def test_keeps_decomposition_view_element(self):
+        assert "DecompositionViewElement" in self._adapted()
+
+    def test_keeps_variants_table_element(self):
+        assert "VariantsTableElement" in self._adapted()
+
+    def test_keeps_trace_view_element(self):
+        assert "TraceViewElement" in self._adapted()
+
+    def test_keeps_custom_elements_define(self):
+        assert "customElements.define" in self._adapted()
+
+    def test_keeps_zip_helper(self):
+        assert "function zip()" in self._adapted()
+
+    def test_keeps_ungapped_helper(self):
+        assert "function ungapped(" in self._adapted()
+
+
+# ---------------------------------------------------------------------------
 # detect_data_type
 # ---------------------------------------------------------------------------
 
@@ -76,7 +142,6 @@ class TestBundleReturnValue:
         from tracy_visualisations import bundle
 
         html = bundle(SAMPLE_TRACE)
-        # The adapted traceView.js defines this class
         assert "TraceViewElement" in html
         assert "customElements.define" in html
 
@@ -85,7 +150,6 @@ class TestBundleReturnValue:
 
         html = bundle(SAMPLE_TRACE)
         data = json.loads(SAMPLE_TRACE.read_text())
-        # A unique value from the data should appear in the HTML
         assert str(data["refchr"]) in html
 
     def test_indigo_html_contains_indigo_components(self):
@@ -112,9 +176,7 @@ class TestBundleReturnValue:
         from tracy_visualisations import bundle
 
         html = bundle(SAMPLE_INDIGO, data_type="trace")
-        # Should use trace template (TraceViewElement from traceView.js)
         assert "<trace-view" in html
-        # Should NOT include alignment-view (indigo template)
         assert "<alignment-view" not in html
 
     def test_explicit_type_indigo(self):
@@ -211,3 +273,4 @@ class TestCLI:
         out = tmp_path / "result.html"
         result = self._run(str(SAMPLE_TRACE), str(out))
         assert str(out) in result.stdout
+

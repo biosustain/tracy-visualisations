@@ -7,32 +7,182 @@ from __future__ import annotations
 import importlib.resources
 import json
 import os
+import re
 from pathlib import Path
 from typing import Optional, Union
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Vendor JS paths (inside the git submodules)
 # ---------------------------------------------------------------------------
 
-def _read_package_text(subpackage: str, filename: str) -> str:
-    """Read a text file that ships with the package."""
-    pkg = f"tracy_visualisations.{subpackage}" if subpackage else "tracy_visualisations"
-    try:
-        # Python 3.9+
-        ref = importlib.resources.files(pkg).joinpath(filename)
-        return ref.read_text(encoding="utf-8")
-    except AttributeError:
-        # Python 3.8 fallback
-        with importlib.resources.open_text(pkg, filename) as fh:  # type: ignore[attr-defined]
-            return fh.read()
+_VENDOR_SAGE_JS = Path("vendor/sage/client/src/static/js/traceView.js")
+_VENDOR_INDIGO_JS = Path("vendor/indigo/client/src/static/js/indigo.js")
 
 
-def _load_js(name: str) -> str:
-    return _read_package_text("js", name)
+def _pkg_root() -> Path:
+    """Return the directory that contains this file (the package root)."""
+    return Path(__file__).parent
+
+
+def _read_vendor_js(relative: Path) -> str:
+    """Read a JS file from a git submodule bundled with the package."""
+    full = _pkg_root() / relative
+    return full.read_text(encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# JS transformation helpers
+# ---------------------------------------------------------------------------
+
+def _adapt_traceview_js(source: str) -> str:
+    """Prepare traceView.js for inline use in a plain HTML page.
+
+    Changes applied to the upstream source:
+    * Strip the ``export default`` modifier from the class declaration so the
+      class is available as a plain global.
+    * Append a ``customElements.define`` call (guarded against double
+      registration) so the ``<trace-view>`` element is registered
+      automatically when the script is inlined.
+    """
+    adapted = re.sub(
+        r"^export\s+default\s+class\s+TraceViewElement",
+        "class TraceViewElement",
+        source,
+        count=1,
+        flags=re.MULTILINE,
+    )
+    adapted = adapted.rstrip()
+    adapted += (
+        '\nif (!customElements.get("trace-view")) {'
+        ' customElements.define("trace-view", TraceViewElement); }\n'
+    )
+    return adapted
+
+
+def _adapt_indigo_js(source: str) -> str:
+    """Extract the visualisation components from indigo.js for standalone use.
+
+    The upstream indigo.js file is a full application that:
+    * Uses an ES module import (``file-saver``).
+    * References a build-time ``process.env.API_URL`` value.
+    * Makes HTTP requests to a server API.
+
+    Only the custom-element class definitions and the helper functions they
+    depend on are needed for rendering pre-computed data.  Everything related
+    to file upload, server communication, and the UI form is removed.
+    """
+    lines = source.splitlines(keepends=True)
+
+    # Collect ranges to DROP (1-indexed line numbers, inclusive)
+    drop_ranges: list[tuple[int, int]] = []
+
+    # 1. Remove the import line
+    import_pat = re.compile(r"^\s*import\s+")
+    # 2. Remove process.env.API_URL assignment
+    api_url_pat = re.compile(r"^\s*const\s+API_URL\s*=")
+    # 3. Top-level const/let variable names that reference DOM elements to remove
+    #    (all are app-wiring code; visualisation classes don't depend on them)
+    _dom_var_prefixes = (
+        "resultLink", "submitButton", "exampleButton", "inputFile",
+        "leftTrim", "rightTrim", "peakRatio", "targetFastaFile",
+        "targetChromatogramFile", "targetGenomes", "targetTabs",
+        "linkPdf", "decompositionChart", "alignmentChart", "traceChart",
+        "variantsTable", "resultContainer", "resultInfo", "resultError",
+        "downloadUrl",
+    )
+    top_level_dom_pat = re.compile(
+        r"^\s*(?:const|let|var)\s+("
+        + "|".join(re.escape(v) for v in _dom_var_prefixes)
+        + r")\b"
+    )
+    # Functions to drop entirely
+    drop_fns = {
+        "run",
+        "showExample",
+        "downloadBcf",
+        "showElement",
+        "hideElement",
+        "handleSuccess",
+        "updatePeakRatioValue",
+    }
+    fn_def_pat = re.compile(r"^(?:async\s+)?function\s+(\w+)\s*\(")
+    window_assign_pat = re.compile(r"^window\.(\w+)\s*=")
+
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        lineno = i + 1  # 1-indexed
+
+        # Drop import statements
+        if import_pat.match(line):
+            drop_ranges.append((lineno, lineno))
+            i += 1
+            continue
+
+        # Drop process.env.API_URL
+        if api_url_pat.match(line):
+            drop_ranges.append((lineno, lineno))
+            i += 1
+            continue
+
+        # Drop top-level DOM variable declarations that wire up the app UI
+        if re.match(r"^\s*\$\(", line) or top_level_dom_pat.match(line):
+            drop_ranges.append((lineno, lineno))
+            i += 1
+            continue
+
+        # Drop top-level calls like updatePeakRatioValue()
+        if re.match(r"^updatePeakRatioValue\(\)", line):
+            drop_ranges.append((lineno, lineno))
+            i += 1
+            continue
+
+        # Drop window.foo = foo assignments for unwanted functions
+        wm = window_assign_pat.match(line)
+        if wm and wm.group(1) in drop_fns:
+            drop_ranges.append((lineno, lineno))
+            i += 1
+            continue
+
+        # Drop entire function bodies for unwanted functions
+        fm = fn_def_pat.match(line)
+        if fm and fm.group(1) in drop_fns:
+            # Find the matching closing brace
+            start = lineno
+            depth = 0
+            j = i
+            while j < len(lines):
+                depth += lines[j].count("{") - lines[j].count("}")
+                if depth <= 0 and j > i:
+                    break
+                j += 1
+            drop_ranges.append((start, j + 1))
+            i = j + 1
+            continue
+
+        i += 1
+
+    # Build a set of 1-indexed line numbers to drop
+    drop_set: set[int] = set()
+    for start, end in drop_ranges:
+        drop_set.update(range(start, end + 1))
+
+    kept = [line for idx, line in enumerate(lines, start=1) if idx not in drop_set]
+    return "".join(kept)
 
 
 def _load_template(name: str) -> str:
-    return _read_package_text("templates", name)
+    """Read an HTML template that ships with the package."""
+    try:
+        # Python 3.9+
+        ref = importlib.resources.files("tracy_visualisations.templates").joinpath(name)
+        return ref.read_text(encoding="utf-8")
+    except AttributeError:
+        # Python 3.8 fallback
+        with importlib.resources.open_text(  # type: ignore[attr-defined]
+            "tracy_visualisations.templates", name
+        ) as fh:
+            return fh.read()
 
 
 # ---------------------------------------------------------------------------
@@ -73,7 +223,8 @@ def detect_data_type(data: dict) -> str:
 def _render_trace_html(data: dict, filename: str) -> str:
     """Render a standalone HTML page using the TraceView component."""
     template = _load_template("trace.html")
-    traceview_js = _load_js("traceView.js")
+    raw_js = _read_vendor_js(_VENDOR_SAGE_JS)
+    traceview_js = _adapt_traceview_js(raw_js)
     data_json = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     return (
         template
@@ -86,7 +237,8 @@ def _render_trace_html(data: dict, filename: str) -> str:
 def _render_indigo_html(data: dict, filename: str) -> str:
     """Render a standalone HTML page using the Indigo web components."""
     template = _load_template("indigo.html")
-    indigo_js = _load_js("indigoComponents.js")
+    raw_js = _read_vendor_js(_VENDOR_INDIGO_JS)
+    indigo_js = _adapt_indigo_js(raw_js)
     data_json = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     return (
         template
