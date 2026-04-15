@@ -43,12 +43,31 @@ html = bundle("results.json")
 html = bundle("results.json", "report.html", data_type="trace")
 ```
 
+### As a Docker container
+
+```bash
+# Build the image
+docker build -t tracy-vis .
+
+# Run it against files in the current directory
+docker run --rm -v "$PWD:/work" tracy-vis results.json
+
+# Explicit output path and visualisation type
+docker run --rm -v "$PWD:/work" tracy-vis results.json report.html --type indigo
+
+# Run using precompiled image
+docker run --rm -v "$PWD:/work" ghcr.io/biosustain/tracy-visualisations results.json 
+```
+
+
+The container starts the `tracy-vis` CLI directly, so any CLI arguments can be passed after the image name.
+
 ## Visualisation types
 
 | Type | Detected when | Components used |
 |------|--------------|-----------------|
 | `trace` | JSON contains a `gappedTrace` key | `<trace-view>` from [traceView.js](https://github.com/gear-genomics/sage/blob/main/client/src/static/js/traceView.js) |
-| `indigo` | JSON contains `alt1align`, `decomposition`, or `variants` | `<trace-view>`, `<alignment-view>`, `<decomposition-view>`, `<variants-view>` from [indigo.js](https://github.com/gear-genomics/indigo/blob/main/client/src/static/js/indigo.js) |
+| `indigo` | JSON contains `alt1align`, `decomposition`, or `variants` | `<trace-view>`, `<alignment-view>`, `<decomposition-view>`, `<variants-view>` from [elements.js](https://github.com/gear-genomics/indigo/blob/main/client/src/static/js/elements.js) |
 
 ## Running tests
 
