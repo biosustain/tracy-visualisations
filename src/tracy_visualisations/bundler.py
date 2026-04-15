@@ -16,7 +16,7 @@ from typing import Optional, Union
 # ---------------------------------------------------------------------------
 
 _VENDOR_SAGE_JS = Path("vendor/sage/client/src/static/js/traceView.js")
-_VENDOR_INDIGO_JS = Path("vendor/indigo/client/src/static/js/indigo.js")
+_VENDOR_INDIGO_JS = Path("vendor/indigo/client/src/static/js/elements.js")
 
 
 def _pkg_root() -> Path:
@@ -25,14 +25,25 @@ def _pkg_root() -> Path:
 
 
 def _read_vendor_js(relative: Path) -> str:
-    """Read a JS file from a git submodule bundled with the package."""
+    """Read a bundled JS file, falling back to built-in copies when needed."""
     full = _pkg_root() / relative
-    return full.read_text(encoding="utf-8")
+    if full.exists():
+        return full.read_text(encoding="utf-8")
+    raise FileNotFoundError(full)
 
 
 # ---------------------------------------------------------------------------
 # JS transformation helpers
 # ---------------------------------------------------------------------------
+def _skip_exports(source: str) -> str:
+    """Remove ES module export statements from the source."""
+    return re.sub(
+        r"^export\s+(default\s+)?",
+        "",
+        source,
+        flags=re.MULTILINE,
+    )
+
 
 def _adapt_traceview_js(source: str) -> str:
     """Prepare traceView.js for inline use in a plain HTML page.
@@ -44,131 +55,27 @@ def _adapt_traceview_js(source: str) -> str:
       registration) so the ``<trace-view>`` element is registered
       automatically when the script is inlined.
     """
-    adapted = re.sub(
-        r"^export\s+default\s+class\s+TraceViewElement",
-        "class TraceViewElement",
-        source,
-        count=1,
-        flags=re.MULTILINE,
-    )
-    adapted = adapted.rstrip()
-    adapted += (
-        '\nif (!customElements.get("trace-view")) {'
-        ' customElements.define("trace-view", TraceViewElement); }\n'
-    )
-    return adapted
+    return f"""
+        {_skip_exports(source)}
+        customElements.define("trace-view", TraceViewElement);
+    """
 
 
 def _adapt_indigo_js(source: str) -> str:
-    """Extract the visualisation components from indigo.js for standalone use.
+    """Prepare indigo's elements.js for inline use in a plain HTML page.
 
-    The upstream indigo.js file is a full application that:
-    * Uses an ES module import (``file-saver``).
-    * References a build-time ``process.env.API_URL`` value.
-    * Makes HTTP requests to a server API.
-
-    Only the custom-element class definitions and the helper functions they
-    depend on are needed for rendering pre-computed data.  Everything related
-    to file upload, server communication, and the UI form is removed.
+    Changes applied to the upstream source:
+    * Remove the ES module import statement since the dependencies are bundled
+      together.
+    * Append a block that registers all the custom elements
     """
-    lines = source.splitlines(keepends=True)
-
-    # Collect ranges to DROP (1-indexed line numbers, inclusive)
-    drop_ranges: list[tuple[int, int]] = []
-
-    # 1. Remove the import line
-    import_pat = re.compile(r"^\s*import\s+")
-    # 2. Remove process.env.API_URL assignment
-    api_url_pat = re.compile(r"^\s*const\s+API_URL\s*=")
-    # 3. Top-level const/let variable names that reference DOM elements to remove
-    #    (all are app-wiring code; visualisation classes don't depend on them)
-    _dom_var_prefixes = (
-        "resultLink", "submitButton", "exampleButton", "inputFile",
-        "leftTrim", "rightTrim", "peakRatio", "targetFastaFile",
-        "targetChromatogramFile", "targetGenomes", "targetTabs",
-        "linkPdf", "decompositionChart", "alignmentChart", "traceChart",
-        "variantsTable", "resultContainer", "resultInfo", "resultError",
-        "downloadUrl",
-    )
-    top_level_dom_pat = re.compile(
-        r"^\s*(?:const|let|var)\s+("
-        + "|".join(re.escape(v) for v in _dom_var_prefixes)
-        + r")\b"
-    )
-    # Functions to drop entirely
-    drop_fns = {
-        "run",
-        "showExample",
-        "downloadBcf",
-        "showElement",
-        "hideElement",
-        "handleSuccess",
-        "updatePeakRatioValue",
-    }
-    fn_def_pat = re.compile(r"^(?:async\s+)?function\s+(\w+)\s*\(")
-    window_assign_pat = re.compile(r"^window\.(\w+)\s*=")
-
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        lineno = i + 1  # 1-indexed
-
-        # Drop import statements
-        if import_pat.match(line):
-            drop_ranges.append((lineno, lineno))
-            i += 1
-            continue
-
-        # Drop process.env.API_URL
-        if api_url_pat.match(line):
-            drop_ranges.append((lineno, lineno))
-            i += 1
-            continue
-
-        # Drop top-level DOM variable declarations that wire up the app UI
-        if re.match(r"^\s*\$\(", line) or top_level_dom_pat.match(line):
-            drop_ranges.append((lineno, lineno))
-            i += 1
-            continue
-
-        # Drop top-level calls like updatePeakRatioValue()
-        if re.match(r"^updatePeakRatioValue\(\)", line):
-            drop_ranges.append((lineno, lineno))
-            i += 1
-            continue
-
-        # Drop window.foo = foo assignments for unwanted functions
-        wm = window_assign_pat.match(line)
-        if wm and wm.group(1) in drop_fns:
-            drop_ranges.append((lineno, lineno))
-            i += 1
-            continue
-
-        # Drop entire function bodies for unwanted functions
-        fm = fn_def_pat.match(line)
-        if fm and fm.group(1) in drop_fns:
-            # Find the matching closing brace
-            start = lineno
-            depth = 0
-            j = i
-            while j < len(lines):
-                depth += lines[j].count("{") - lines[j].count("}")
-                if depth <= 0 and j > i:
-                    break
-                j += 1
-            drop_ranges.append((start, j + 1))
-            i = j + 1
-            continue
-
-        i += 1
-
-    # Build a set of 1-indexed line numbers to drop
-    drop_set: set[int] = set()
-    for start, end in drop_ranges:
-        drop_set.update(range(start, end + 1))
-
-    kept = [line for idx, line in enumerate(lines, start=1) if idx not in drop_set]
-    return "".join(kept)
+    return f"""
+        {_skip_exports(source)}
+        customElements.define('trace-view', TraceViewElement)
+        customElements.define('alignment-view', AlignmentViewElement)
+        customElements.define('decomposition-view', DecompositionViewElement)
+        customElements.define('variants-view', VariantsTableElement)
+    """
 
 
 def _load_template(name: str) -> str:
@@ -227,8 +134,7 @@ def _render_trace_html(data: dict, filename: str) -> str:
     traceview_js = _adapt_traceview_js(raw_js)
     data_json = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     return (
-        template
-        .replace("{{traceview_js}}", traceview_js)
+        template.replace("{{traceview_js}}", traceview_js)
         .replace("{{data_json}}", data_json)
         .replace("{{filename}}", _escape_html(filename))
     )
@@ -241,8 +147,7 @@ def _render_indigo_html(data: dict, filename: str) -> str:
     indigo_js = _adapt_indigo_js(raw_js)
     data_json = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     return (
-        template
-        .replace("{{indigo_js}}", indigo_js)
+        template.replace("{{indigo_js}}", indigo_js)
         .replace("{{data_json}}", data_json)
         .replace("{{filename}}", _escape_html(filename))
     )
@@ -250,8 +155,7 @@ def _render_indigo_html(data: dict, filename: str) -> str:
 
 def _escape_html(text: str) -> str:
     return (
-        text
-        .replace("&", "&amp;")
+        text.replace("&", "&amp;")
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .replace('"', "&quot;")
@@ -262,6 +166,7 @@ def _escape_html(text: str) -> str:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def bundle(
     input_path: Union[str, os.PathLike],

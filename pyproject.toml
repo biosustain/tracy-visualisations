@@ -34,7 +34,7 @@ where = ["src"]
 [tool.setuptools.package-data]
 "tracy_visualisations" = [
     "vendor/sage/client/src/static/js/traceView.js",
-    "vendor/indigo/client/src/static/js/indigo.js",
+    "vendor/indigo/client/src/static/js/elements.js",
     "templates/*.html",
 ]
 
