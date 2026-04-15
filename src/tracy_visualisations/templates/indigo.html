@@ -17,21 +17,6 @@
   <h2 class="mb-3">Tracy — Indigo View</h2>
   <p class="text-muted small">Source: <strong>{{filename}}</strong></p>
 
-  <div class="form-row align-items-center mb-3">
-    <div class="col-auto">
-      <select class="form-control" id="tocSelect"
-              onchange="handleTocChange(this)">
-        <option value="#">-- Jump to section --</option>
-        <option value="trace-chart">Trace &amp; basecall viewer</option>
-        <option value="alignment-chart-1">Alt1 Alignment</option>
-        <option value="alignment-chart-2">Alt2 Alignment</option>
-        <option value="alignment-chart-3">Alt1 vs Alt2 Alignment</option>
-        <option value="variants-table">Variants</option>
-        <option value="decomposition-chart">Decomposition plot</option>
-      </select>
-    </div>
-  </div>
-
   <h4>Trace &amp; basecall viewer</h4>
   <trace-view id="trace-chart"></trace-view>
 
