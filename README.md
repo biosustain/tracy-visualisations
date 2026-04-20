@@ -75,3 +75,7 @@ The container starts the `tracy-vis` CLI directly, so any CLI arguments can be p
 pip install ".[dev]"
 pytest
 ```
+
+## LICENSING
+This project depends on GPL-3.0 licensed libraries.
+As a result, this project is also distributed under the GPL-3.0 license.
