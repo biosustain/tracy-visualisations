@@ -11,6 +11,8 @@ COPY src ./src
 
 RUN apt-get update \
     && apt-get upgrade -y \
+    # procps provides `ps`, which Nextflow requires to collect task metrics.
+    && apt-get install -y --no-install-recommends procps \
     && rm -rf /var/lib/apt/lists/* \
     && python -m pip install --upgrade pip \
     && python -m pip install .
