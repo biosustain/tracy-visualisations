@@ -19,5 +19,4 @@ RUN apt-get update \
 
 WORKDIR /work
 
-ENTRYPOINT ["tracy-vis"]
-CMD ["--help"]
+CMD ["tracy-vis", "--help"]
