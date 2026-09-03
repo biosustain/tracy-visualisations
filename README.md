@@ -69,6 +69,32 @@ The container starts the `tracy-vis` CLI directly, so any CLI arguments can be p
 | `trace` | JSON contains a `gappedTrace` key | `<trace-view>` from [traceView.js](https://github.com/gear-genomics/sage/blob/main/client/src/static/js/traceView.js) |
 | `indigo` | JSON contains `alt1align`, `decomposition`, or `variants` | `<trace-view>`, `<alignment-view>`, `<decomposition-view>`, `<variants-view>` from [elements.js](https://github.com/gear-genomics/indigo/blob/main/client/src/static/js/elements.js) |
 
+## Linking to a variant
+
+Indigo viewers read the variant to show from a query parameter named after the
+variants table, whose value is the 0-based row index of the variant in the
+`variants` table of the Tracy JSON:
+
+```
+report.html?variants-table=2
+```
+
+Opening such a link triggers the variants table's own "show in trace viewer"
+action, so the viewer lands on exactly the view a hand-clicked row would, with
+no clicking through the table first. Values that are missing, non-numeric or out
+of range are ignored, and the viewer still renders in full.
+
+The same parameter is written back into the URL whenever a row's chart icon is
+clicked, so the address bar is always a link to what is on screen and can be
+copied and shared as one. Each change pushes a history entry (repeated clicks on
+one row do not), and the viewer follows the URL changing under it, so back and
+forward step through the variants that were looked at.
+
+Because the index is just the row order of the Tracy JSON, tables derived from
+the same JSON (for example the mutation CSVs of
+[dsp_bulk-sangerseq](https://github.com/biosustain/dsp_bulk-sangerseq)) can link
+each of their rows straight to the matching electropherogram position.
+
 ## Running tests
 
 ```bash

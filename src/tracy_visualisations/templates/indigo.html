@@ -48,6 +48,72 @@
 
   function ungappedLocal(seq) { return seq.replace(/-/g, ''); }
 
+  // The variant to show travels in a query parameter named after the variants
+  // table, e.g. `report.html?variants-table=2`. The value is the 0-based row
+  // index of the variant in tracy's `variants` table, which is also the order
+  // the variants are reported in downstream mutation tables, so such a table
+  // can link each of its rows straight to the matching trace position. Absent
+  // or out-of-range values are ignored, so a stale link still renders the full
+  // viewer.
+  function requestedVariantIndex(variantsTable) {
+    var requested = new URLSearchParams(window.location.search).get(variantsTable.id);
+    if (requested === null || !/^\d+$/.test(requested)) return null;
+
+    var index = Number(requested);
+    var rows = (data.variants && data.variants.rows) || [];
+    return index < rows.length ? index : null;
+  }
+
+  // Write the shown variant back into the URL, so the address bar is always a
+  // link to what is on screen, whether the row was reached through such a link
+  // or by clicking its icon. Pushes an entry so that back and forward walk
+  // through the variants that were looked at, but only when the variant
+  // actually changes, to keep repeated clicks on one row out of the history.
+  function rememberVariantInUrl(variantsTable, index) {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get(variantsTable.id) === String(index)) return;
+
+    params.set(variantsTable.id, index);
+
+    try {
+      window.history.pushState(
+        null, '', window.location.pathname + '?' + params + window.location.hash
+      );
+    } catch (error) {
+      // A browser that refuses to rewrite the URL of a `file://` document only
+      // costs a stale address bar; the viewer itself still works.
+    }
+  }
+
+  // The variants table registers its own "show in trace viewer" action on
+  // `window.__variantViewers`, keyed by element id, and its row icons call it
+  // from there. Wrapping it there puts a link and a clicked row on the same
+  // path, so both end up reflected in the URL.
+  function trackVariantSelection(variantsTable) {
+    var viewers = window.__variantViewers;
+    var showVariant = viewers && viewers[variantsTable.id];
+    if (typeof showVariant !== 'function') return;
+
+    viewers[variantsTable.id] = function (index) {
+      showVariant(index);
+      rememberVariantInUrl(variantsTable, index);
+    };
+
+    // Follow whatever the URL currently names, without writing it back: the
+    // parameter is already there, and pushing it again would duplicate the
+    // entry that was just navigated to.
+    function followUrl() {
+      var index = requestedVariantIndex(variantsTable);
+      if (index !== null) showVariant(index);
+    }
+
+    followUrl();
+    // Back and forward move between the pushed entries without reloading the
+    // page, so the view has to be brought along by hand. Editing the query in
+    // the address bar does reload, and arrives through the followUrl() above.
+    window.addEventListener('popstate', followUrl);
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     var traceChart        = document.getElementById('trace-chart');
     var alignmentChart1   = document.getElementById('alignment-chart-1');
@@ -127,6 +193,7 @@
 
     if (variantsTable && typeof variantsTable.displayData === 'function') {
       variantsTable.displayData(data, traceChart);
+      trackVariantSelection(variantsTable);
     }
   });
 })();
