@@ -205,6 +205,73 @@ class TestBundleReturnValue:
 
 
 # ---------------------------------------------------------------------------
+# bundle — indigo variant links
+# ---------------------------------------------------------------------------
+
+class TestIndigoVariantLinks:
+    """`?<variants-table id>=<n>` opens the viewer on the n-th variant."""
+
+    def _indigo_html(self):
+        from tracy_visualisations import bundle
+
+        return bundle(SAMPLE_INDIGO)
+
+    def test_reads_the_variant_index_from_the_query_string(self):
+        # Given / When an indigo viewer is bundled
+        html = self._indigo_html()
+
+        # Then the page reads the variant to show out of the URL query
+        assert "requestedVariantIndex" in html
+        assert "new URLSearchParams(window.location.search)" in html
+
+    def test_names_the_parameter_after_the_variants_table(self):
+        # Given / When an indigo viewer is bundled
+        html = self._indigo_html()
+
+        # Then the parameter is keyed on the table's element id, both when read
+        # and when written back
+        assert ".get(variantsTable.id)" in html
+        assert "params.set(variantsTable.id, index)" in html
+
+    def test_reuses_the_variants_table_show_action(self):
+        # Given / When an indigo viewer is bundled
+        html = self._indigo_html()
+
+        # Then it goes through the callback the variants table registers, so a
+        # link lands on the same view as a hand-clicked row
+        assert "trackVariantSelection" in html
+        assert "window.__variantViewers" in html
+
+    def test_keeps_a_clicked_row_in_the_url(self):
+        # Given / When an indigo viewer is bundled
+        html = self._indigo_html()
+
+        # Then clicking a row pushes the URL, so the address bar is always a
+        # link to what is on screen and back/forward have somewhere to go
+        assert "rememberVariantInUrl" in html
+        assert "window.history.pushState" in html
+
+    def test_follows_the_url_changing_under_it(self):
+        # Given / When an indigo viewer is bundled
+        html = self._indigo_html()
+
+        # Then back and forward, which move between those entries without
+        # reloading, bring the view along
+        assert "'popstate'" in html
+        assert "followUrl" in html
+
+    def test_trace_viewer_has_no_variant_links(self):
+        from tracy_visualisations import bundle
+
+        # Given a trace (non-indigo) JSON file
+        # When it is bundled
+        html = bundle(SAMPLE_TRACE)
+
+        # Then the variants-table specific handling is absent
+        assert "trackVariantSelection" not in html
+
+
+# ---------------------------------------------------------------------------
 # bundle — file output
 # ---------------------------------------------------------------------------
 
