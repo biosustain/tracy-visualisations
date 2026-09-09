@@ -112,11 +112,62 @@ a mismatch raises an error instead of producing an empty viewer.
 
 ## Using the components directly
 
-To put a viewer in a page of your own, emit the bundle and load it:
+The components are published to GitHub Packages as
+`@biosustain/tracy-visualisations`. Point the scope at GitHub's registry, then
+install:
+
+```ini
+# .npmrc
+@biosustain:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
+
+```bash
+npm install @biosustain/tracy-visualisations
+```
+
+The token is not optional: GitHub Packages serves npm only to authenticated
+requests, public repository or not. Any token with `read:packages` will do.
+
+Importing the package registers every element; there is nothing to call.
+
+```js
+import '@biosustain/tracy-visualisations'
+```
+
+Each component is also importable on its own, so a page takes only the viewers
+it shows:
+
+```js
+import '@biosustain/tracy-visualisations/teal'    // <teal-trace-view>
+import '@biosustain/tracy-visualisations/indigo'  // the four <indigo-*> elements
+import '@biosustain/tracy-visualisations/sabre'   // <sabre-msa-view>
+import '@biosustain/tracy-visualisations/pearl'   // <pearl-assembly-view>
+import '@biosustain/tracy-visualisations/sage'    // the viewer teal's supersedes
+```
+
+That is worth doing: unminified, the four `<indigo-*>` elements are 9 kB of the
+default bundle's 108, and a page taking only indigo neither ships pearl's
+editing toolbar nor teal's SVG viewer. Each file declares its own required
+globals on `window.TracyVis.requires`, so a page importing everything but
+indigo does not need Plotly at all.
+
+Every file is a classic script, so a page with no bundler can load one straight
+out of `node_modules` instead:
+
+```html
+<script src="node_modules/@biosustain/tracy-visualisations/dist/teal.js"></script>
+```
+
+The CLI writes the same files, and takes any selection at all — one bundle
+carrying several components, which is what the package's root entry is:
 
 ```bash
 tracy-vis --emit-components gear-components.js
+tracy-vis --emit-components viewer.js --components teal,sabre
 ```
+
+Either way, the elements are then used the same:
 
 ```html
 <script src="gear-components.js"></script>
@@ -223,6 +274,16 @@ Because the index is just the row order of the Tracy JSON, tables derived from
 the same JSON (for example the mutation CSVs of
 [dsp_bulk-sangerseq](https://github.com/biosustain/dsp_bulk-sangerseq)) can link
 each of their rows straight to the matching electropherogram position.
+
+## Releasing the npm package
+
+`.github/workflows/publish-npm.yml` publishes `@biosustain/tracy-visualisations`
+to GitHub Packages when a release is published, and on demand from the Actions
+tab. It emits the files from the checkout during the run, so nothing built is
+ever committed, and it refuses a release whose tag does not match the version in
+`package.json` — which `tests/test_npm_package.py` keeps in step with
+`pyproject.toml`, so one commit is one release whether it is installed with pip
+or with npm.
 
 ## Demo site
 

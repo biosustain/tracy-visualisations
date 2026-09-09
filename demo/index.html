@@ -116,6 +116,7 @@
     <p class="mb-0">
       <a class="btn btn-outline-light btn-sm"
          href="https://github.com/biosustain/tracy-visualisations">Source on GitHub</a>
+      <a class="btn btn-outline-light btn-sm ml-2" href="#install">Install</a>
     </p>
   </div>
 </header>
@@ -123,6 +124,7 @@
 <nav class="section-nav">
   <div class="container">
     <div class="nav">
+      <a class="nav-link" href="#install">Install</a>
       <a class="nav-link" href="#how-it-works">How this page works</a>
       <a class="nav-link" href="#teal"><code>teal-trace-view</code></a>
       <a class="nav-link" href="#indigo"><code>indigo-*</code></a>
@@ -135,31 +137,79 @@
 
 <main class="container">
 
+  <section id="install" class="demo-section">
+    <h2>Install</h2>
+    <p>
+      The components are published to GitHub Packages as
+      <code>@biosustain/tracy-visualisations</code>. Point the scope at
+      GitHub's registry, then install:
+    </p>
+    <div class="demo-usage">
+      <pre><code># .npmrc
+@biosustain:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+
+npm install @biosustain/tracy-visualisations</code></pre>
+    </div>
+    <p class="text-muted small">
+      The token is not optional: GitHub Packages serves npm only to
+      authenticated requests, public repository or not. Any token with
+      <code>read:packages</code> will do.
+    </p>
+    <p>
+      Importing the package registers every element; there is nothing to call.
+      Each component is also importable on its own, so a page takes only the
+      viewers it shows:
+    </p>
+    <div class="demo-usage">
+      <pre><code>import '@biosustain/tracy-visualisations';         // every element below
+
+import '@biosustain/tracy-visualisations/teal';    // &lt;teal-trace-view&gt;
+import '@biosustain/tracy-visualisations/indigo';  // the four &lt;indigo-*&gt; elements
+import '@biosustain/tracy-visualisations/sabre';   // &lt;sabre-msa-view&gt;
+import '@biosustain/tracy-visualisations/pearl';   // &lt;pearl-assembly-view&gt;
+import '@biosustain/tracy-visualisations/sage';    // the viewer teal's supersedes
+
+// Every file is a classic script, so a page with no bundler can load one
+// straight out of node_modules instead:
+&lt;script src="node_modules/@biosustain/tracy-visualisations/dist/teal.js"&gt;&lt;/script&gt;</code></pre>
+    </div>
+    <p>
+      Splitting them is worth it: unminified, indigo's four elements are 9 kB
+      of the default bundle's 108, and each file declares its own required
+      globals, so a page that leaves indigo out does not need Plotly at all.
+    </p>
+    <p>
+      The Python CLI writes the same files, takes any selection at all, and is
+      also how the self-contained reports linked below are built:
+    </p>
+    <div class="demo-usage">
+      <pre><code>pip install git+https://github.com/biosustain/tracy-visualisations
+
+# A bundle with a selection of your own
+tracy-vis --emit-components gear-components.js --components teal,sage
+
+# One self-contained report for a tracy output file
+tracy-vis results.json report.html</code></pre>
+    </div>
+  </section>
+
   <section id="how-it-works" class="demo-section">
     <h2>How this page works</h2>
     <p>
       Every viewer below is the real element, rendering a real sample file.
       This page loads exactly one script to get them —
-      <a href="gear-components.js"><code>gear-components.js</code></a>, the file
-      <code>tracy-vis --emit-components</code> writes — and then calls
-      <code>displayData()</code> on each element. There is no other JavaScript
-      here beyond fetching the samples and wiring up the two demos that report
-      events back.
+      <a href="gear-components.js"><code>gear-components.js</code></a>, the
+      bundle the package installs, here emitted with sage added by name — and
+      then calls <code>displayData()</code> on each element. There is no other
+      JavaScript here beyond fetching the samples and wiring up the two demos
+      that report events back.
     </p>
     <p>
       Each section links its sample file and the <em>self-contained report</em>
       the CLI builds from that same file: one HTML file with the components
       inlined, which opens from disk with no server at all.
     </p>
-    <div class="demo-usage">
-      <pre><code>pip install git+https://github.com/biosustain/tracy-visualisations
-
-# One page, all the elements registered
-tracy-vis --emit-components gear-components.js
-
-# One self-contained report for a tracy output file
-tracy-vis results.json report.html</code></pre>
-    </div>
     <p class="text-muted small mt-3">
       Indigo's charts need Plotly (≥ 1.39) on the page already; every other
       element is self-contained. The bundle lists what it expects in its header

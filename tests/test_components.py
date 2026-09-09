@@ -220,6 +220,11 @@ class TestDriftGuards:
 
 # The standalone `<script src>` bundle.
 
+def _style_keys(script: str) -> set:
+    """Return the keys *script* guards its injected <style> elements with."""
+    return set(re.findall(r'injectStyle\("([^"]+)"', script))
+
+
 class TestBuildBundle:
     def test_defaults_to_the_bundle_safe_components(self):
         from tracy_visualisations.components import default_bundle_components
@@ -314,6 +319,22 @@ class TestBuildBundle:
         # When the injector runs the second time
         # Then it finds its own marker and does nothing
         assert 'style[data-tracy-vis=' in build_bundle(["teal"])
+
+    def test_each_stylesheet_is_keyed_apart(self):
+        from tracy_visualisations.components import build_bundle
+
+        # Given the per-component files the npm package publishes, two of
+        # which can end up on one page: teal's carries only the base rules,
+        # sabre's also carries the alignment colours
+        teal = build_bundle(["teal"])
+        sabre = build_bundle(["sabre"])
+
+        # When the keys each guards its <style> elements with are read
+        # Then sabre's stylesheet is keyed apart from the base rules, so
+        # whichever of the two files loads second still gets its CSS in - one
+        # shared key would let the first loaded swallow the other's
+        assert _style_keys(teal) == {"base"}
+        assert _style_keys(sabre) == {"base", "sabre"}
 
     def test_records_what_it_registered_without_duplicating(self):
         from tracy_visualisations.components import build_bundle

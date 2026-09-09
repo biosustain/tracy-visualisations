@@ -6,3 +6,5 @@ build/
 .eggs/
 *.egg
 site/
+node_modules/
+*.tgz

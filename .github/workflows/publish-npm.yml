@@ -1,0 +1,116 @@
+name: Build and Publish npm Package
+
+on:
+  push: &main_push
+    branches: ["main"]
+    paths:
+      - "package.json"
+      - "scripts/build_npm_package.py"
+      - "src/**"
+      - ".github/workflows/**"
+  pull_request: *main_push
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      publish_package:
+        description: "Publish to GitHub Packages"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  # The published bundle is emitted by the Python package, so never publish one
+  # whose package fails its own test suite - which includes the checks that the
+  # manifest still agrees with the version and the bundle path.
+  test:
+    uses: ./.github/workflows/test.yml
+
+  build-and-publish:
+    name: Build and publish npm package
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      # The bundle is read out of the submodules, so a missing pin would
+      # otherwise publish a package that registers nothing.
+      - name: Verify submodule pins
+        run: ./scripts/bootstrap-submodules.sh
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # registry-url is what writes the .npmrc `npm publish` needs; the scope
+      # has to match the package's, or the publish goes to npmjs.com.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@biosustain"
+
+      - name: Decide whether to publish
+        id: publish-config
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "publish=${{ inputs.publish_package }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # A tag that disagrees with the manifest would publish a version nobody
+      # asked for, and the registry then refuses the corrected one as a
+      # duplicate. Fail before the publish instead.
+      - name: Check the release tag matches the manifest
+        if: github.event_name == 'release'
+        shell: bash
+        run: |
+          tag="${{ github.event.release.tag_name }}"
+          version="$(node -p "require('./package.json').version")"
+          if [[ "${tag#v}" != "$version" ]]; then
+            echo "::error::release ${tag} does not match package.json version ${version}"
+            exit 1
+          fi
+
+      # No `npm ci`: the package has no dependencies at all. The build shells
+      # out to the Python CLI, which reads the checkout rather than an install.
+      - name: Build the component bundle
+        run: npm run build
+
+      # Runs on every event, publish or not, so a pull request still checks
+      # that the package is packable and carries what it claims to.
+      - name: Pack for inspection
+        run: npm pack --dry-run
+
+      - name: Publish to GitHub Packages
+        if: steps.publish-config.outputs.publish == 'true'
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish summary
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          {
+            echo "### npm package summary"
+            echo "- Package: @biosustain/tracy-visualisations@${version}"
+            echo "- Registry: https://npm.pkg.github.com"
+            echo "- Published: ${{ steps.publish-config.outputs.publish }}"
+          } >> "$GITHUB_STEP_SUMMARY"
