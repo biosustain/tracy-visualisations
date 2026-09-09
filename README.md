@@ -13,6 +13,9 @@ Two things are built from that component layer:
   elements on someone else's page (see [Using the components
   directly](#using-the-components-directly)).
 
+Both are on show, rendering real sample files, on the **[demo
+page](https://biosustain.github.io/tracy-visualisations/)**.
+
 The components come from [Teal](https://github.com/gear-genomics/teal),
 [Indigo](https://github.com/gear-genomics/indigo),
 [Sabre](https://github.com/gear-genomics/sabre) and
@@ -220,6 +223,32 @@ Because the index is just the row order of the Tracy JSON, tables derived from
 the same JSON (for example the mutation CSVs of
 [dsp_bulk-sangerseq](https://github.com/biosustain/dsp_bulk-sangerseq)) can link
 each of their rows straight to the matching electropherogram position.
+
+## Demo site
+
+[biosustain.github.io/tracy-visualisations](https://biosustain.github.io/tracy-visualisations/)
+is one page that loads the emitted bundle exactly as another site would, hands
+each element a sample file, and links the self-contained report the CLI builds
+from that same sample. It is built and published from `main` by
+`.github/workflows/pages.yml`, which needs the repository's Pages source set to
+*GitHub Actions*.
+
+Nothing in it is a copy: the bundle comes from `build_bundle()`, the traces are
+the vendored apps' own demo files, and the remaining samples are this suite's
+fixtures. `tests/test_demo_site.py` fails if a sample moves or the page asks for
+a file the build does not produce, because either would show up in a browser
+only as a section that renders nothing.
+
+Build and preview it locally:
+
+```bash
+./scripts/build_demo_site.py            # writes ./site
+python3 -m http.server --directory site # then open localhost:8000
+```
+
+The page has to be served rather than opened from disk: it fetches its samples,
+which `file://` refuses. The reports under `site/reports/` do open from disk,
+being the point of them.
 
 ## Running tests
 
