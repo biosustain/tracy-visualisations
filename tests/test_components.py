@@ -163,6 +163,93 @@ class TestComponentJs:
         assert result.returncode == 0, result.stderr
 
 
+class TestSeqSelectionPatch:
+    """Both trace viewers ship a corrected sequence-selection handler.
+
+    Selecting a run of bases is meant to take the trace window to those bases,
+    and the highlight the window then paints is the only thing that says which
+    bases you got. Upstream reads the selection off the range's containers,
+    which loses the offsets that decide the boundary bases and gives up
+    whenever a boundary is not a base, and it then widens the window to 120% of
+    the selection - so the highlight is a run either side of the one dragged.
+    """
+
+    @pytest.mark.parametrize("name", ["teal", "sage"])
+    def test_drops_the_margin_that_widened_the_window(self, name):
+        from tracy_visualisations.components import component_js
+
+        # Given a trace viewer
+        # When its JavaScript is emitted
+        emitted = component_js([name])
+
+        # Then the arithmetic that padded the window out past the selection is
+        # gone, and so is the container walk that fed it
+        assert "spanWithMargin" not in emitted
+        assert "getSpanIndex" not in emitted
+
+    @pytest.mark.parametrize("name", ["teal", "sage"])
+    def test_reads_the_selection_through_the_range(self, name):
+        from tracy_visualisations.components import component_js
+
+        # Given a trace viewer
+        # When its JavaScript is emitted
+        emitted = component_js([name])
+
+        # Then the selected bases come from the range's own point comparisons
+        assert "selectedBaseRange" in emitted
+        assert "comparePoint" in emitted
+
+    @pytest.mark.parametrize("name", ["teal", "sage"])
+    def test_the_patched_javascript_parses(self, name, tmp_path):
+        from tracy_visualisations.components import component_js
+
+        node = pytest.importorskip("shutil").which("node")
+        if node is None:
+            pytest.skip("node is not installed")
+
+        # Given the patched viewer, spliced together from two files
+        script = tmp_path / f"{name}.js"
+        script.write_text(component_js([name]), encoding="utf-8")
+
+        # When node parses it
+        result = subprocess.run(
+            [node, "--check", str(script)], capture_output=True, text=True
+        )
+
+        # Then the splice left valid JavaScript behind
+        assert result.returncode == 0, result.stderr
+
+    def test_refuses_a_source_the_patch_no_longer_matches(self):
+        from tracy_visualisations.components import fix_seq_selection
+
+        # Given a traceView.js that no longer carries the block upstream
+        # shipped, as a bumped submodule would
+        drifted = "class TraceViewElement extends HTMLElement {}"
+
+        # When the adapter runs
+        # Then it refuses, rather than emitting a viewer that quietly kept the
+        # behaviour the patch was written to correct
+        with pytest.raises(RuntimeError, match="seq_selection.upstream.js"):
+            fix_seq_selection(drifted)
+
+    def test_patches_a_source_that_still_matches(self):
+        from tracy_visualisations.components import _read_patch, fix_seq_selection
+
+        # Given a source carrying exactly the block upstream ships
+        source = (
+            "class TraceViewElement extends HTMLElement {\n"
+            + _read_patch("seq_selection.upstream.js")
+            + "\n}\n"
+        )
+
+        # When the adapter runs
+        patched = fix_seq_selection(source)
+
+        # Then the block is swapped for the corrected one
+        assert "getSpanIndex" not in patched
+        assert "selectedBaseRange" in patched
+
+
 class TestComponentCss:
     def test_always_carries_the_d_none_fallback(self):
         from tracy_visualisations.components import component_css

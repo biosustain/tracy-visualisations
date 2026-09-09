@@ -42,6 +42,7 @@ where = ["src"]
     "vendor/sabre/client/src/static/js/sabre.js",
     "vendor/sabre/client/src/static/css/sabre.css",
     "templates/*.html",
+    "patches/*.js",
 ]
 
 [tool.pytest.ini_options]
