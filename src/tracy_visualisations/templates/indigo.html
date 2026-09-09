@@ -9,8 +9,10 @@
         crossorigin="anonymous">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css" crossorigin="anonymous">
   <style>
+{{components_css}}
     body { padding-top: 1.5rem; padding-bottom: 3rem; }
-    trace-view, alignment-view, decomposition-view, variants-view { display: block; margin-top: 1rem; }
+    indigo-trace-view, indigo-alignment-view,
+    indigo-decomposition-view, indigo-variants-view { display: block; margin-top: 1rem; }
   </style>
 </head>
 <body>
@@ -19,28 +21,28 @@
   <p class="text-muted small">Source: <strong>{{filename}}</strong></p>
 
   <h4>Trace &amp; basecall viewer</h4>
-  <trace-view id="trace-chart"></trace-view>
+  <indigo-trace-view id="trace-chart"></indigo-trace-view>
 
   <h4 class="mt-4">Alt1 Alignment</h4>
-  <alignment-view id="alignment-chart-1"></alignment-view>
+  <indigo-alignment-view id="alignment-chart-1"></indigo-alignment-view>
 
   <h4 class="mt-4">Alt2 Alignment</h4>
-  <alignment-view id="alignment-chart-2"></alignment-view>
+  <indigo-alignment-view id="alignment-chart-2"></indigo-alignment-view>
 
   <h4 class="mt-4">Alt1 vs Alt2 Alignment</h4>
-  <alignment-view id="alignment-chart-3"></alignment-view>
+  <indigo-alignment-view id="alignment-chart-3"></indigo-alignment-view>
 
   <h4 class="mt-4">Variants</h4>
-  <variants-view id="variants-table" style="overflow-x: auto;"></variants-view>
+  <indigo-variants-view id="variants-table" style="overflow-x: auto;"></indigo-variants-view>
 
   <h4 class="mt-4">Decomposition plot</h4>
-  <decomposition-view id="decomposition-chart"></decomposition-view>
+  <indigo-decomposition-view id="decomposition-chart"></indigo-decomposition-view>
 </div>
 
 <script src="https://cdn.plot.ly/plotly-1.39.2.min.js"
         crossorigin="anonymous"></script>
 <script>
-{{indigo_js}}
+{{components_js}}
 </script>
 <script>
 (function () {

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+  <title>{{filename}} — Alignment Browser</title>
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css"
+        crossorigin="anonymous">
+  <style>
+{{components_css}}
+  </style>
+  <style>
+    /* Page layout only. Everything that draws the alignment itself travels
+       with the <sabre-msa-view> element, so this block is what the report adds
+       around it: a two-pane split with the hover details beside the
+       alignment. */
+    body { padding-top: 1.5rem; padding-bottom: 3rem; }
+    .controls { margin-bottom: 1.5rem; }
+
+    .results-container { display: flex; }
+    .pane-alignment { flex: 1; margin-right: 20px; overflow: auto; }
+    .pane-info { flex: 0 0 300px; }
+    .info-container { position: sticky; top: 1.5rem; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2 class="mb-3">{{filename}} — Alignment Browser</h2>
+  <p class="text-muted small">Source: <strong>{{filename}}</strong></p>
+
+  <div class="controls form-row align-items-end">
+    <div class="col-auto">
+      <label for="chars-per-line">Characters per line</label>
+      <select class="form-control" id="chars-per-line">
+        <option value="60">60</option>
+        <option value="80" selected>80</option>
+        <option value="100">100</option>
+        <option value="120">120</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<section class="results-container container-fluid">
+  <div class="pane-alignment d-flex flex-column justify-content-center">
+    <sabre-msa-view id="alignment" characters-per-line="80"></sabre-msa-view>
+  </div>
+  <div class="pane-info">
+    <div class="info-container">
+      Hover information
+      <section id="info-content"></section>
+    </div>
+  </div>
+</section>
+
+<script>
+{{components_js}}
+</script>
+<script>
+(function () {
+  var alignment = document.getElementById('alignment');
+  var infoContent = document.getElementById('info-content');
+  var charsPerLine = document.getElementById('chars-per-line');
+
+  // The element reports what the cursor is over and leaves the presentation to
+  // the page; it carries the rendered table so the page need not rebuild it.
+  alignment.addEventListener('msa-hover', function (event) {
+    infoContent.innerHTML = event.detail.html;
+  });
+
+  // Setting the property reflects to the attribute, and the element re-renders
+  // from attributeChangedCallback - so there is no redraw button to press.
+  charsPerLine.addEventListener('change', function () {
+    alignment.charactersPerLine = this.value;
+  });
+
+  var fasta = {{fasta_json}};
+  alignment.displayData(fasta);
+})();
+</script>
+</body>
+</html>

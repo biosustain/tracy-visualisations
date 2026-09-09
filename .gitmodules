@@ -1,6 +1,12 @@
-[submodule "src/tracy_visualisations/vendor/sage"]
-	path = src/tracy_visualisations/vendor/sage
-	url = https://github.com/gear-genomics/sage
 [submodule "src/tracy_visualisations/vendor/indigo"]
 	path = src/tracy_visualisations/vendor/indigo
-	url = https://github.com/gear-genomics/indigo
+	url = https://github.com/Skitionek/indigo
+[submodule "src/tracy_visualisations/vendor/sabre"]
+	path = src/tracy_visualisations/vendor/sabre
+	url = https://github.com/gear-genomics/sabre
+[submodule "src/tracy_visualisations/vendor/teal"]
+	path = src/tracy_visualisations/vendor/teal
+	url = https://github.com/gear-genomics/teal
+[submodule "src/tracy_visualisations/vendor/pearl"]
+	path = src/tracy_visualisations/vendor/pearl
+	url = https://github.com/Skitionek/pearl

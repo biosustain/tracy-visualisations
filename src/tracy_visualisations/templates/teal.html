@@ -8,19 +8,20 @@
         href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css"
         crossorigin="anonymous">
   <style>
+{{components_css}}
     body { padding-top: 1.5rem; padding-bottom: 3rem; }
-    trace-view { display: block; margin-top: 1rem; }
+    teal-trace-view { display: block; margin-top: 1rem; }
   </style>
 </head>
 <body>
 <div class="container">
   <h2 class="mb-3">{{filename}} — Trace View</h2>
   <p class="text-muted small">Source: <strong>{{filename}}</strong></p>
-  <trace-view id="trace-chart"></trace-view>
+  <teal-trace-view id="trace-chart"></teal-trace-view>
 </div>
 
 <script>
-{{traceview_js}}
+{{components_js}}
 </script>
 <script>
 (function () {
