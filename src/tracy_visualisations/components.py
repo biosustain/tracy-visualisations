@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Callable, Iterable, Optional, Tuple
 
 _VENDOR = Path("vendor")
+_PATCHES = Path("patches")
 
 
 def _pkg_root() -> Path:
@@ -60,6 +61,45 @@ def strip_module_syntax(source: str) -> str:
         without_exports,
         flags=re.MULTILINE,
     )
+
+
+def _read_patch(name: str) -> str:
+    """Read a JavaScript fragment that ships with the package."""
+    full = _pkg_root() / _PATCHES / name
+    return full.read_text(encoding="utf-8").strip("\n")
+
+
+def fix_seq_selection(source: str) -> str:
+    """Adapt a traceView.js, correcting how it reads a sequence selection.
+
+    Selecting a run of bases in the chromatogram sequence takes the trace
+    window to those bases, and the highlight the window then paints is the only
+    thing that says which bases you got. Upstream gets both halves of that
+    wrong: it maps the selection back to bases by walking up from the range's
+    containers to a ``data-idx``, which loses the offsets that decide the two
+    boundary bases and gives up whenever a boundary lands on the container
+    rather than on a base, and it then widens the window to 120% of the
+    selection - so the highlight is a run three or four bases either side of
+    the one that was dragged.
+
+    ``patches/seq_selection.js`` replaces that block: it reads the selection
+    through the range's own point comparisons and sets the window to exactly
+    the selected bases. The block it replaces is kept verbatim in
+    ``patches/seq_selection.upstream.js``, which is also what makes a submodule
+    bump that moves the code fail here rather than quietly ship the old
+    behaviour.
+
+    teal and sage vendor the same file, so both take this adapter.
+    """
+    upstream = _read_patch("seq_selection.upstream.js")
+    if upstream not in source:
+        raise RuntimeError(
+            "the sequence selection handler is no longer in traceView.js as "
+            "patches/seq_selection.upstream.js records it; the vendored source "
+            "has moved and the patch has to be rewritten against it"
+        )
+    patched = source.replace(upstream, _read_patch("seq_selection.js"))
+    return strip_module_syntax(patched)
 
 
 # ---------------------------------------------------------------------------
@@ -123,6 +163,7 @@ COMPONENTS: dict[str, Component] = {
         name="teal",
         sources=(_VENDOR / "teal/client/src/static/js/traceView.js",),
         elements=(("trace-view", "TraceViewElement"),),
+        adapt=fix_seq_selection,
     ),
     # The viewer teal's supersedes, kept registered so a report can still be
     # rendered with the element the earlier ones used. Same class and entry
@@ -131,6 +172,7 @@ COMPONENTS: dict[str, Component] = {
         name="sage",
         sources=(_VENDOR / "sage/client/src/static/js/traceView.js",),
         elements=(("trace-view", "TraceViewElement"),),
+        adapt=fix_seq_selection,
         in_default_bundle=False,
     ),
     "indigo": Component(
