@@ -250,6 +250,51 @@ class TestSeqSelectionPatch:
         assert "selectedBaseRange" in patched
 
 
+class TestSeqWrappingPatch:
+    """The two sequence views wrap in CSS, not with a computed ``<br>``.
+
+    Upstream guesses a character width from the font size, derives a line
+    length from the element's width and pushes a ``<br>`` every that-many
+    bases. Nothing recomputes it, so a resize leaves the sequence at its old
+    line length, overflowing its box instead of reflowing.
+    """
+
+    @pytest.mark.parametrize("name", ["teal", "sage"])
+    def test_drops_the_computed_wrapping(self, name):
+        from tracy_visualisations.components import component_js
+
+        # Given a trace viewer
+        # When its JavaScript is emitted
+        emitted = component_js([name])
+
+        # Then neither the guessed line length nor the <br> it fed survives
+        assert "wrapLen" not in emitted
+        assert "html.push('<br>')" not in emitted
+
+    @pytest.mark.parametrize("name", ["teal", "sage"])
+    def test_lets_css_break_between_bases(self, name):
+        from tracy_visualisations.components import component_js
+
+        # Given a trace viewer
+        # When its JavaScript is emitted
+        emitted = component_js([name])
+
+        # Then both sequence views carry the rule that lets a run of bases -
+        # which has no spaces to break on - wrap at all
+        assert emitted.count("word-break: break-all") == 2
+
+    def test_refuses_a_source_the_patch_no_longer_matches(self):
+        from tracy_visualisations.components import fix_seq_wrapping
+
+        # Given a traceView.js that no longer computes its wrapping
+        drifted = "class TraceViewElement extends HTMLElement {}"
+
+        # When the adapter runs
+        # Then it refuses, naming what it could not find
+        with pytest.raises(RuntimeError, match="wrap length"):
+            fix_seq_wrapping(drifted)
+
+
 class TestComponentCss:
     def test_always_carries_the_d_none_fallback(self):
         from tracy_visualisations.components import component_css

@@ -69,8 +69,92 @@ def _read_patch(name: str) -> str:
     return full.read_text(encoding="utf-8").strip("\n")
 
 
+def _replace_exactly(source: str, old: str, new: str, count: int, what: str) -> str:
+    """Replace *old* with *new*, insisting it appears exactly *count* times.
+
+    The vendored apps are live upstream repositories, so a patch that no longer
+    matches has to fail here. Silently patching nothing would ship a viewer
+    that quietly kept the behaviour the patch was written to correct.
+    """
+    found = source.count(old)
+    if found != count:
+        raise RuntimeError(
+            f"expected {count} occurrence(s) of {what} in traceView.js, found "
+            f"{found}; the vendored source has moved and the patch has to be "
+            "rewritten against it"
+        )
+    return source.replace(old, new)
+
+
+# Upstream wraps the two sequence views by hand: it guesses a character width
+# from the font size, derives a line length from the element's width, and pushes
+# a `<br>` every that-many bases. Both renderers carry the same guess.
+_WRAPLEN_GUESS = """        var wrapLen = 60;
+        var rect = view.getBoundingClientRect();
+        var width = rect && rect.width ? rect.width : 0;
+        if (width > 0) {
+            var fs = parseFloat(window.getComputedStyle(view).fontSize) || 12;
+            var charW = fs * 0.62;
+            var calc = Math.floor(width / charW);
+            if (calc > 5) wrapLen = calc;
+        }
+
+"""
+
+# The `<br>` each renderer pushes, over its own loop variable.
+_BR_PUSHES = (
+    """            if (i > 0 && i % wrapLen === 0) {
+                html.push('<br>');
+            }
+""",
+    """            if (j > 0 && j % wrapLen === 0) {
+                html.push('<br>');
+            }
+""",
+)
+
+# A DNA sequence has no spaces, so `pre-wrap` alone finds nowhere to break and
+# the line overflows instead - which is why the manual wrapping existed. Every
+# base is its own span now, and `break-all` lets the browser break between any
+# two of them.
+_SEQ_VIEW_STYLE = "white-space: pre-wrap; font-family: monospace; min-height: 7em;"
+_SEQ_VIEW_STYLE_WRAPPING = (
+    "white-space: pre-wrap; word-break: break-all; "
+    "font-family: monospace; min-height: 7em;"
+)
+
+
+def fix_seq_wrapping(source: str) -> str:
+    """Hand the two sequence views' line wrapping back to the browser.
+
+    The computed wrapping is baked in at the width that was current when the
+    view was last painted, and nothing recomputes it: resize the window and the
+    sequence keeps its old line length, overflowing its box horizontally rather
+    than reflowing, which can leave the highlighted run scrolled out of sight.
+    Letting CSS break between bases fixes that for free, and drops the guessed
+    character width along with it.
+
+    Wrapping this way rather than with a flex container is deliberate: flex
+    makes every base its own box, and a selection serialised out of one carries
+    a newline between each base, so copying a run of sequence out of the view
+    yields one base per line.
+    """
+    patched = _replace_exactly(
+        source, _WRAPLEN_GUESS, "", 2, "the guessed wrap length"
+    )
+    for br_push in _BR_PUSHES:
+        patched = _replace_exactly(patched, br_push, "", 1, "a <br> push")
+    return _replace_exactly(
+        patched,
+        _SEQ_VIEW_STYLE,
+        _SEQ_VIEW_STYLE_WRAPPING,
+        2,
+        "a sequence view's style attribute",
+    )
+
+
 def fix_seq_selection(source: str) -> str:
-    """Adapt a traceView.js, correcting how it reads a sequence selection.
+    """Correct how a traceView.js reads a sequence selection.
 
     Selecting a run of bases in the chromatogram sequence takes the trace
     window to those bases, and the highlight the window then paints is the only
@@ -85,21 +169,24 @@ def fix_seq_selection(source: str) -> str:
     ``patches/seq_selection.js`` replaces that block: it reads the selection
     through the range's own point comparisons and sets the window to exactly
     the selected bases. The block it replaces is kept verbatim in
-    ``patches/seq_selection.upstream.js``, which is also what makes a submodule
-    bump that moves the code fail here rather than quietly ship the old
-    behaviour.
+    ``patches/seq_selection.upstream.js``, which is what makes a submodule bump
+    that moves the code fail here rather than quietly ship the old behaviour.
+    """
+    return _replace_exactly(
+        source,
+        _read_patch("seq_selection.upstream.js"),
+        _read_patch("seq_selection.js"),
+        1,
+        "the sequence selection handler (patches/seq_selection.upstream.js)",
+    )
+
+
+def fix_trace_view(source: str) -> str:
+    """Adapt a traceView.js, applying every correction it needs.
 
     teal and sage vendor the same file, so both take this adapter.
     """
-    upstream = _read_patch("seq_selection.upstream.js")
-    if upstream not in source:
-        raise RuntimeError(
-            "the sequence selection handler is no longer in traceView.js as "
-            "patches/seq_selection.upstream.js records it; the vendored source "
-            "has moved and the patch has to be rewritten against it"
-        )
-    patched = source.replace(upstream, _read_patch("seq_selection.js"))
-    return strip_module_syntax(patched)
+    return strip_module_syntax(fix_seq_wrapping(fix_seq_selection(source)))
 
 
 # ---------------------------------------------------------------------------
@@ -163,7 +250,7 @@ COMPONENTS: dict[str, Component] = {
         name="teal",
         sources=(_VENDOR / "teal/client/src/static/js/traceView.js",),
         elements=(("trace-view", "TraceViewElement"),),
-        adapt=fix_seq_selection,
+        adapt=fix_trace_view,
     ),
     # The viewer teal's supersedes, kept registered so a report can still be
     # rendered with the element the earlier ones used. Same class and entry
@@ -172,7 +259,7 @@ COMPONENTS: dict[str, Component] = {
         name="sage",
         sources=(_VENDOR / "sage/client/src/static/js/traceView.js",),
         elements=(("trace-view", "TraceViewElement"),),
-        adapt=fix_seq_selection,
+        adapt=fix_trace_view,
         in_default_bundle=False,
     ),
     "indigo": Component(
