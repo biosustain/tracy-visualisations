@@ -1,17 +1,40 @@
 # tracy-visualisations
 
-A Python package that bundles [Tracy](https://github.com/gear-genomics/tracy)
-JSON output files together with the
-[TraceView](https://github.com/gear-genomics/sage) and
-[Indigo](https://github.com/gear-genomics/indigo) web components into
-**self-contained HTML files** that can be opened in any modern browser with no
-server required.
+Packages the [GEAR Genomics](https://github.com/gear-genomics) web front-ends as
+**custom elements**, so they can be embedded in any page without bringing along
+each app's Flask backend or Parcel build.
+
+Two things are built from that component layer:
+
+* **Self-contained HTML reports** — [Tracy](https://github.com/gear-genomics/tracy)
+  output bundled with the components it needs into a single file that opens in
+  any modern browser with no server.
+* **A standalone JavaScript bundle** — one `<script src>` that registers the
+  elements on someone else's page (see [Using the components
+  directly](#using-the-components-directly)).
+
+The components come from [Teal](https://github.com/gear-genomics/teal),
+[Indigo](https://github.com/gear-genomics/indigo),
+[Sabre](https://github.com/gear-genomics/sabre) and
+[Pearl](https://github.com/gear-genomics/pearl), vendored as git submodules.
+
+Two input formats are accepted: Tracy's JSON output (`tracy align` /
+`tracy decompose`), and a gapped multi-FASTA alignment such as the `.align.fa`
+written by `tracy assemble`.
 
 ## Installation
 
 ```bash
+git clone --recursive https://github.com/biosustain/tracy-visualisations
+cd tracy-visualisations
+./scripts/bootstrap-submodules.sh   # checks out the submodules, checks the pins
 pip install .
 ```
+
+The front-ends are git submodules, and some carry local changes that are not
+yet upstream: those pins live on forks that `.gitmodules` points at directly.
+`bootstrap-submodules.sh` verifies every pin is reachable and names the
+submodule, commit and remote when one is not; it is safe to re-run.
 
 ## Quick start
 
@@ -26,6 +49,9 @@ tracy-vis results.json report.html
 
 # Force indigo visualisation type
 tracy-vis results.json report.html --type indigo
+
+# Emit the web components as a standalone script instead of a report
+tracy-vis --emit-components gear-components.js
 ```
 
 ### As a Python module
@@ -64,10 +90,106 @@ The container starts the `tracy-vis` CLI directly, so any CLI arguments can be p
 
 ## Visualisation types
 
-| Type | Detected when | Components used |
+| Type | Detected when | Elements used |
 |------|--------------|-----------------|
-| `trace` | JSON contains a `gappedTrace` key | `<trace-view>` from [traceView.js](https://github.com/gear-genomics/sage/blob/main/client/src/static/js/traceView.js) |
-| `indigo` | JSON contains `alt1align`, `decomposition`, or `variants` | `<trace-view>`, `<alignment-view>`, `<decomposition-view>`, `<variants-view>` from [elements.js](https://github.com/gear-genomics/indigo/blob/main/client/src/static/js/elements.js) |
+| `trace` | JSON contains `gappedTrace`, or the raw `peakA`/`peakC`/`peakG`/`peakT` arrays | `<teal-trace-view>` from [teal](https://github.com/gear-genomics/teal/blob/main/client/src/static/js/traceView.js) |
+| `indigo` | JSON contains `alt1align`, `decomposition`, or `variants` | `<indigo-trace-view>`, `<indigo-alignment-view>`, `<indigo-decomposition-view>`, `<indigo-variants-view>` from [indigo](https://github.com/gear-genomics/indigo/blob/main/client/src/static/js/elements.js) |
+| `assembly` | JSON contains `gappedTraces` | `<pearl-assembly-view>` from [pearl](https://github.com/gear-genomics/pearl) |
+| `msa` | the file opens with a FASTA header (`>`) | `<sabre-msa-view>` from [sabre](https://github.com/gear-genomics/sabre) |
+
+`trace` uses teal's viewer rather than sage's: it is the same element with the
+same `displayData` entry point, but it also normalises a raw, unaligned trace
+and scales its SVG to the page instead of a fixed 1200px.
+
+The format decides how the file is parsed, so `--type` can only pick between
+types that match it: `msa` renders FASTA, `trace` and `indigo` render JSON, and
+a mismatch raises an error instead of producing an empty viewer.
+
+## Using the components directly
+
+To put a viewer in a page of your own, emit the bundle and load it:
+
+```bash
+tracy-vis --emit-components gear-components.js
+```
+
+```html
+<script src="gear-components.js"></script>
+
+<teal-trace-view id="trace"></teal-trace-view>
+<sabre-msa-view id="alignment" characters-per-line="80"></sabre-msa-view>
+<pearl-assembly-view id="assembly"></pearl-assembly-view>
+
+<script>
+  document.getElementById('trace').displayData(tracyJson);
+  document.getElementById('alignment').displayData(fastaText);
+  document.getElementById('assembly').displayData(pearlJson);
+</script>
+```
+
+Every tag is namespaced with the app it came from — `teal-`, `indigo-`,
+`sabre-`, `pearl-`. Two of these apps ship a viewer they both call a *trace
+view*: teal draws one in SVG, indigo draws one with Plotly. The prefix keeps
+them tellable apart, and lets a page use both.
+
+The bundle is plain classic JavaScript — no module loader, no build step. It
+carries its own CSS, injects it once on load, and registers each element only
+if the tag is still free, so loading it twice is harmless.
+
+Every element follows the same contract as the upstream apps: `displayData()`
+takes the data and renders.
+
+* `<sabre-msa-view>` reflects a `characters-per-line` attribute and reports what the
+  cursor is over as an `msa-hover` event, leaving the host page to decide where
+  that goes.
+* `<pearl-assembly-view>` brings its own editing toolbar, exposes `assembly`,
+  `userEditedSequence` and `editPosition`, and raises `assembly-change` and
+  `position-change` as the user works. Pass `{ prepared: true }` to reopen an
+  already-edited session without deriving it again.
+
+Pick components with `--components`:
+
+```bash
+tracy-vis --emit-components viewer.js --components teal,sabre
+```
+
+Components are selected by the app they come from: `teal`, `indigo`, `sabre`,
+`pearl`. The default is all of them — each is emitted in its own scope, so two
+apps that happen to declare an identically named class (teal and indigo both
+have a `TraceViewElement`) no longer clash.
+
+One caveat: **some elements need a global.** Indigo's charts require Plotly
+(≥ 1.39) to be on the page already; the bundle lists what it expects in its
+header banner and on `window.TracyVis.requires`.
+
+## Multiple sequence alignments
+
+An `msa` page renders reads and reference as wrapped alignment blocks, colouring
+mismatches, ambiguous consensus calls and leading/trailing gaps, with a hover
+panel giving alignment position, sequence position and record metadata. The
+characters-per-line selector redraws the alignment in place.
+
+Note that the colouring is by **column consensus**, not against the reference:
+the reference is simply another row in the count. So where several reads agree
+against the reference it is the *reference* base that is marked as the mismatch,
+and where a single read disagrees with the reference the 1-1 tie renders as an
+ambiguous consensus rather than a mismatch.
+
+Sabre cannot show electropherograms; use a `trace` or `indigo` page for those.
+
+## Assembly editing
+
+An `assembly` page reopens a pearl assembly — several Sanger traces aligned to a
+reference or consensus — as an editable viewer. The consensus overview is colour
+coded by agreement (grey no information, green consensus, orange conflict, red
+mismatch against the reference, bright green edited), "Jump to next conflict"
+walks the positions that need a decision, and the electropherograms below show
+every trace covering the current position.
+
+Edits are made in the browser and the page has no server to save back to, so the
+corrected sequence leaves through the download button. Feeding a saved pearl
+session (`multipleAlignment.json`) back in reopens it with its edits intact
+rather than recomputing them from the traces.
 
 ## Linking to a variant
 

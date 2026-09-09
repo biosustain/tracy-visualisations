@@ -32,9 +32,14 @@ tracy-vis = "tracy_visualisations.__main__:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
+# Must stay in step with COMPONENTS in tracy_visualisations/components.py;
+# tests/test_vendor.py fails if the registry references a file not listed here.
 "tracy_visualisations" = [
-    "vendor/sage/client/src/static/js/traceView.js",
+    "vendor/teal/client/src/static/js/traceView.js",
     "vendor/indigo/client/src/static/js/elements.js",
+    "vendor/pearl/client/src/static/js/pearl.js",
+    "vendor/sabre/client/src/static/js/sabre.js",
+    "vendor/sabre/client/src/static/css/sabre.css",
     "templates/*.html",
 ]
 

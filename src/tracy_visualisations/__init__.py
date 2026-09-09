@@ -1,7 +1,7 @@
 """
 tracy_visualisations
 ====================
-Bundle Tracy JSON output files together with the Indigo / TraceView web
+Bundle Tracy output files together with the Indigo / TraceView / Sabre web
 components into self-contained HTML files.
 
 Basic usage::

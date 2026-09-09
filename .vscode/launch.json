@@ -1,0 +1,156 @@
+{
+  // Debugging one component means two different debuggers, so every
+  // component below gets a pair of configurations:
+  //
+  //   "Python: ..."  debugs the bundling - breakpoints in bundler.py and
+  //                  components.py, i.e. how the vendored source is read,
+  //                  adapted and substituted into the template.
+  //   "Browser: ..." rebuilds the report, then opens it in Chrome so the
+  //                  component's own JavaScript can be debugged. The
+  //                  vendored source is inlined into the generated page, so
+  //                  set those breakpoints in build/debug/<name>.html.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: bundle teal (trace)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "tracy_visualisations",
+      "args": [
+        "${workspaceFolder}/tests/data/sample_trace.json",
+        "${workspaceFolder}/build/debug/teal-trace.html",
+        "--type",
+        "trace"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "preLaunchTask": "debug: create output dir"
+    },
+    {
+      "name": "Python: bundle indigo",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "tracy_visualisations",
+      "args": [
+        "${workspaceFolder}/tests/data/sample_indigo.json",
+        "${workspaceFolder}/build/debug/indigo.html",
+        "--type",
+        "indigo"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "preLaunchTask": "debug: create output dir"
+    },
+    {
+      "name": "Python: bundle pearl (assembly)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "tracy_visualisations",
+      "args": [
+        "${workspaceFolder}/tests/data/sample_assembly.json",
+        "${workspaceFolder}/build/debug/pearl-assembly.html",
+        "--type",
+        "assembly"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "preLaunchTask": "debug: create output dir"
+    },
+    {
+      "name": "Python: bundle sabre (msa)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "tracy_visualisations",
+      "args": [
+        "${workspaceFolder}/tests/data/sample_msa.align.fa",
+        "${workspaceFolder}/build/debug/sabre-msa.html",
+        "--type",
+        "msa"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "preLaunchTask": "debug: create output dir"
+    },
+    {
+      "name": "Python: emit standalone component bundle",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "tracy_visualisations",
+      "args": [
+        "--emit-components",
+        "${workspaceFolder}/build/debug/gear-components.js"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "preLaunchTask": "debug: create output dir"
+    },
+    {
+      "name": "Browser: teal (trace)",
+      "type": "chrome",
+      "request": "launch",
+      "file": "${workspaceFolder}/build/debug/teal-trace.html",
+      "preLaunchTask": "bundle: teal (trace)",
+      "userDataDir": "${workspaceFolder}/build/debug/chrome-profile",
+      "webRoot": "${workspaceFolder}/build/debug"
+    },
+    {
+      "name": "Browser: indigo",
+      "type": "chrome",
+      "request": "launch",
+      "file": "${workspaceFolder}/build/debug/indigo.html",
+      "preLaunchTask": "bundle: indigo",
+      "userDataDir": "${workspaceFolder}/build/debug/chrome-profile",
+      "webRoot": "${workspaceFolder}/build/debug"
+    },
+    {
+      "name": "Browser: pearl (assembly)",
+      "type": "chrome",
+      "request": "launch",
+      "file": "${workspaceFolder}/build/debug/pearl-assembly.html",
+      "preLaunchTask": "bundle: pearl (assembly)",
+      "userDataDir": "${workspaceFolder}/build/debug/chrome-profile",
+      "webRoot": "${workspaceFolder}/build/debug"
+    },
+    {
+      "name": "Browser: sabre (msa)",
+      "type": "chrome",
+      "request": "launch",
+      "file": "${workspaceFolder}/build/debug/sabre-msa.html",
+      "preLaunchTask": "bundle: sabre (msa)",
+      "userDataDir": "${workspaceFolder}/build/debug/chrome-profile",
+      "webRoot": "${workspaceFolder}/build/debug"
+    },
+    {
+      "name": "Pytest: all tests",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["-vv"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Pytest: current file",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["-vv", "${file}"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    }
+  ]
+}

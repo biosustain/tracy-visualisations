@@ -25,8 +25,13 @@ env:
   IMAGE_NAME: ${{ github.repository_owner }}/tracy-visualisations
 
 jobs:
+  # Never publish an image whose package fails its own test suite.
+  test:
+    uses: ./.github/workflows/test.yml
+
   build-and-publish:
     name: Build and publish Docker image
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read

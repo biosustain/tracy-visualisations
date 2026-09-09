@@ -1,0 +1,69 @@
+{
+  // Build tasks for the debug configurations in launch.json. Output goes to
+  // build/debug, which .gitignore already covers.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "debug: create output dir",
+      "type": "shell",
+      "command": "mkdir -p '${workspaceFolder}/build/debug'",
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "shared" }
+    },
+    {
+      "label": "bundle: teal (trace)",
+      "type": "shell",
+      "command": "mkdir -p '${workspaceFolder}/build/debug' && '${command:python.interpreterPath}' -m tracy_visualisations tests/data/sample_trace.json build/debug/teal-trace.html --type trace",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": { "PYTHONPATH": "${workspaceFolder}/src" }
+      },
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "shared" }
+    },
+    {
+      "label": "bundle: indigo",
+      "type": "shell",
+      "command": "mkdir -p '${workspaceFolder}/build/debug' && '${command:python.interpreterPath}' -m tracy_visualisations tests/data/sample_indigo.json build/debug/indigo.html --type indigo",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": { "PYTHONPATH": "${workspaceFolder}/src" }
+      },
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "shared" }
+    },
+    {
+      "label": "bundle: pearl (assembly)",
+      "type": "shell",
+      "command": "mkdir -p '${workspaceFolder}/build/debug' && '${command:python.interpreterPath}' -m tracy_visualisations tests/data/sample_assembly.json build/debug/pearl-assembly.html --type assembly",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": { "PYTHONPATH": "${workspaceFolder}/src" }
+      },
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "shared" }
+    },
+    {
+      "label": "bundle: sabre (msa)",
+      "type": "shell",
+      "command": "mkdir -p '${workspaceFolder}/build/debug' && '${command:python.interpreterPath}' -m tracy_visualisations tests/data/sample_msa.align.fa build/debug/sabre-msa.html --type msa",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": { "PYTHONPATH": "${workspaceFolder}/src" }
+      },
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "shared" }
+    },
+    {
+      "label": "bundle: all components",
+      "dependsOn": [
+        "bundle: teal (trace)",
+        "bundle: indigo",
+        "bundle: pearl (assembly)",
+        "bundle: sabre (msa)"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    }
+  ]
+}
