@@ -1,0 +1,44 @@
+{
+  "name": "@biosustain/tracy-visualisations",
+  "version": "0.1.0",
+  "description": "GEAR Genomics Sanger sequencing viewers as custom elements: <teal-trace-view>, <indigo-*>, <sabre-msa-view> and <pearl-assembly-view>.",
+  "keywords": [
+    "bioinformatics",
+    "sanger",
+    "chromatogram",
+    "electropherogram",
+    "sequence-alignment",
+    "custom-elements",
+    "web-components"
+  ],
+  "homepage": "https://biosustain.github.io/tracy-visualisations/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/biosustain/tracy-visualisations.git"
+  },
+  "bugs": {
+    "url": "https://github.com/biosustain/tracy-visualisations/issues"
+  },
+  "author": "Dominik Mariusz Maszczyk <dommas@dtu.dk>",
+  "license": "GPL-3.0",
+  "main": "dist/gear-components.js",
+  "exports": {
+    ".": "./dist/gear-components.js",
+    "./teal": "./dist/teal.js",
+    "./sage": "./dist/sage.js",
+    "./indigo": "./dist/indigo.js",
+    "./pearl": "./dist/pearl.js",
+    "./sabre": "./dist/sabre.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": true,
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "scripts": {
+    "build": "python3 scripts/build_npm_package.py --output dist",
+    "prepack": "npm run build"
+  }
+}

@@ -291,15 +291,23 @@ def _strip_font_faces(css: str) -> str:
     return re.sub(r"@font-face\s*\{[^}]*\}\s*", "", css)
 
 
+def component_stylesheets(component: Component) -> str:
+    """Return one component's own CSS, without the base rules."""
+    return "\n".join(
+        _strip_font_faces(read_vendor_file(path))
+        for path in component.stylesheets
+    )
+
+
 def component_css(names: Optional[Iterable[str]] = None) -> str:
     """Return the stylesheets the named components need, base rules first."""
     components = resolve(names)
     sheets = [BASE_CSS]
-    for component in components:
-        sheets += [
-            _strip_font_faces(read_vendor_file(path))
-            for path in component.stylesheets
-        ]
+    sheets += [
+        component_stylesheets(component)
+        for component in components
+        if component.stylesheets
+    ]
     return "\n".join(sheets)
 
 
@@ -408,7 +416,6 @@ def build_bundle(names: Optional[Iterable[str]] = None) -> str:
         ]
     )
 
-    css = component_css(selected)
     # The IIFE keeps each vendor's helpers (`zip`, `ungapped`, `chunked`) out of
     # the host page's global scope; the contract with the page is the element
     # tags, not the class bindings.
@@ -417,7 +424,7 @@ def build_bundle(names: Optional[Iterable[str]] = None) -> str:
             banner,
             "(function (global) {",
             '"use strict";',
-            _style_injector_js(css),
+            _style_injector_js(components),
             component_js(selected),
             _namespace_js(selected, tags, requires),
             "})(typeof window !== \"undefined\" ? window : this);",
@@ -426,20 +433,38 @@ def build_bundle(names: Optional[Iterable[str]] = None) -> str:
     )
 
 
-def _style_injector_js(css: str) -> str:
-    """Return JS that adds *css* to the document once."""
-    return "\n".join(
-        [
-            "var styleKey = \"tracy-vis-components\";",
-            'if (typeof document !== "undefined" &&',
-            '    !document.querySelector("style[data-tracy-vis=\\"" + styleKey + "\\"]")) {',
-            '  var styleEl = document.createElement("style");',
-            '  styleEl.setAttribute("data-tracy-vis", styleKey);',
-            f"  styleEl.textContent = {json.dumps(css)};",
-            "  document.head.appendChild(styleEl);",
-            "}",
-        ]
-    )
+def _style_injector_js(components: list[Component]) -> str:
+    """Return JS that adds each stylesheet to the document once.
+
+    Keyed per stylesheet rather than once per bundle. The npm package publishes
+    a file per component, so two of them can end up on one page, and a single
+    shared key would let whichever loaded first swallow the other's CSS: the
+    second file would find a marker already there and skip its own injection.
+    """
+    payloads = [("base", BASE_CSS)]
+    payloads += [
+        (component.name, component_stylesheets(component))
+        for component in components
+        if component.stylesheets
+    ]
+
+    lines = [
+        "function injectStyle(key, css) {",
+        '  if (typeof document === "undefined") { return; }',
+        '  var marker = "tracy-vis-" + key;',
+        '  if (document.querySelector("style[data-tracy-vis=\\"" + marker + "\\"]")) {',
+        "    return;",
+        "  }",
+        '  var styleEl = document.createElement("style");',
+        '  styleEl.setAttribute("data-tracy-vis", marker);',
+        "  styleEl.textContent = css;",
+        "  document.head.appendChild(styleEl);",
+        "}",
+    ]
+    lines += [
+        f"injectStyle({json.dumps(key)}, {json.dumps(css)});" for key, css in payloads
+    ]
+    return "\n".join(lines)
 
 
 def _namespace_js(
