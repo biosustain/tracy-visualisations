@@ -55,6 +55,50 @@
       "presentation": { "reveal": "silent", "panel": "shared" }
     },
     {
+      // The site goes to ./site, the path the README documents and .gitignore
+      // already covers, rather than build/debug: it is the same directory a
+      // hand-run build writes.
+      "label": "demo: build site",
+      "type": "shell",
+      "command": "'${command:python.interpreterPath}' scripts/build_demo_site.py --output site",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": { "PYTHONPATH": "${workspaceFolder}/src" }
+      },
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "shared" }
+    },
+    {
+      // Serves the built site for "Browser: demo site (GitHub Pages)". The
+      // page fetches its samples, so it cannot be opened over file://.
+      //
+      // This one does not exit: it keeps serving until the task is
+      // terminated, which also means a second launch while it is still
+      // running will fail to bind the port. Terminate the task, or reload the
+      // browser instead of relaunching. The port has to match launch.json.
+      "label": "demo: serve site",
+      "type": "shell",
+      // -u because the "Serving HTTP on ..." line the matcher below waits for
+      // goes to stdout, which Python block-buffers off a terminal.
+      "command": "'${command:python.interpreterPath}' -u -m http.server --directory site --bind 127.0.0.1 8371",
+      "dependsOn": ["demo: build site"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "presentation": { "reveal": "silent", "panel": "dedicated" },
+      // http.server logs requests rather than problems; the only thing worth
+      // matching is the line that says it is up, so the browser is not opened
+      // before there is anything to serve.
+      "problemMatcher": {
+        "owner": "demo-site",
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^Serving HTTP",
+          "endsPattern": "^Serving HTTP"
+        }
+      }
+    },
+    {
       "label": "bundle: all components",
       "dependsOn": [
         "bundle: teal (trace)",

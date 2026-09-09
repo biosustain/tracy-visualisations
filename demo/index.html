@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+  <title>tracy-visualisations — component demo</title>
+  <meta name="description"
+        content="Live demo of the GEAR Genomics Sanger sequencing viewers packaged as custom elements."/>
+
+  <!-- The same three the generated reports load: Bootstrap for layout,
+       Font Awesome for the icons pearl's toolbar and indigo's variants table
+       draw, Plotly for indigo's charts. Everything that draws a viewer
+       travels in gear-components.js below. -->
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css"
+        crossorigin="anonymous">
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css"
+        crossorigin="anonymous">
+
+  <style>
+    body { padding-bottom: 4rem; }
+
+    .page-header {
+      background: #16222e;
+      color: #f2f6f8;
+      padding: 3rem 0 2.5rem;
+    }
+    .page-header h1 { font-weight: 300; margin-bottom: .75rem; }
+    .page-header .lead { color: #b9c7d2; max-width: 52rem; }
+    .page-header a { color: #8ecbe8; }
+
+    .section-nav {
+      background: #fff;
+      border-bottom: 1px solid #dee2e6;
+      position: sticky;
+      top: 0;
+      z-index: 1020;
+    }
+    .section-nav .nav-link { padding: .75rem .9rem; font-size: .9rem; }
+    .section-nav code { font-size: .85rem; }
+
+    .demo-section { padding-top: 3rem; }
+    .demo-section h2 { font-size: 1.5rem; }
+    .demo-section h2 code {
+      background: none;
+      color: inherit;
+      font-size: inherit;
+      padding: 0;
+    }
+
+    .demo-meta { font-size: .875rem; color: #6c757d; margin-bottom: 1rem; }
+    .demo-meta a { color: #0f6ea8; }
+
+    /* The stage is deliberately plain: a viewer brings its own styling, and a
+       border around it is the only thing that says where the element ends and
+       the page begins. */
+    .demo-stage {
+      border: 1px solid #dee2e6;
+      border-radius: .25rem;
+      padding: 1rem;
+      background: #fff;
+      overflow-x: auto;
+    }
+
+    .demo-error { color: #a71d2a; margin: 0; }
+
+    .demo-usage { margin-top: 1rem; }
+    .demo-usage summary { cursor: pointer; font-size: .9rem; color: #0f6ea8; }
+    .demo-usage pre {
+      background: #f6f8fa;
+      border: 1px solid #dee2e6;
+      border-radius: .25rem;
+      padding: 1rem;
+      margin-top: .75rem;
+      font-size: .85rem;
+      overflow-x: auto;
+    }
+
+    /* The hover panel sits beside the alignment, as it does in sabre itself:
+       the element reports what the cursor is over and leaves the page to
+       decide where that goes. */
+    .msa-layout { display: flex; flex-wrap: wrap; }
+    .msa-alignment { flex: 1 1 32rem; min-width: 0; overflow-x: auto; }
+    .msa-info { flex: 0 0 18rem; padding-left: 1.5rem; font-size: .85rem; }
+    .msa-info h6 { text-transform: uppercase; letter-spacing: .04em; color: #6c757d; }
+
+    .indigo-subhead {
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: #6c757d;
+      margin: 1.5rem 0 .5rem;
+    }
+    .indigo-subhead:first-child { margin-top: 0; }
+
+    .page-footer {
+      margin-top: 4rem;
+      padding-top: 2rem;
+      border-top: 1px solid #dee2e6;
+      font-size: .875rem;
+      color: #6c757d;
+    }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <div class="container">
+    <h1>tracy-visualisations</h1>
+    <p class="lead">
+      The <a href="https://github.com/gear-genomics">GEAR Genomics</a> Sanger
+      sequencing front-ends, packaged as custom elements you can drop into a
+      page of your own — no Flask backend, no Parcel build.
+    </p>
+    <p class="mb-0">
+      <a class="btn btn-outline-light btn-sm"
+         href="https://github.com/biosustain/tracy-visualisations">Source on GitHub</a>
+    </p>
+  </div>
+</header>
+
+<nav class="section-nav">
+  <div class="container">
+    <div class="nav">
+      <a class="nav-link" href="#how-it-works">How this page works</a>
+      <a class="nav-link" href="#teal"><code>teal-trace-view</code></a>
+      <a class="nav-link" href="#indigo"><code>indigo-*</code></a>
+      <a class="nav-link" href="#sabre"><code>sabre-msa-view</code></a>
+      <a class="nav-link" href="#pearl"><code>pearl-assembly-view</code></a>
+      <a class="nav-link" href="#sage"><code>sage-trace-view</code></a>
+    </div>
+  </div>
+</nav>
+
+<main class="container">
+
+  <section id="how-it-works" class="demo-section">
+    <h2>How this page works</h2>
+    <p>
+      Every viewer below is the real element, rendering a real sample file.
+      This page loads exactly one script to get them —
+      <a href="gear-components.js"><code>gear-components.js</code></a>, the file
+      <code>tracy-vis --emit-components</code> writes — and then calls
+      <code>displayData()</code> on each element. There is no other JavaScript
+      here beyond fetching the samples and wiring up the two demos that report
+      events back.
+    </p>
+    <p>
+      Each section links its sample file and the <em>self-contained report</em>
+      the CLI builds from that same file: one HTML file with the components
+      inlined, which opens from disk with no server at all.
+    </p>
+    <div class="demo-usage">
+      <pre><code>pip install git+https://github.com/biosustain/tracy-visualisations
+
+# One page, all the elements registered
+tracy-vis --emit-components gear-components.js
+
+# One self-contained report for a tracy output file
+tracy-vis results.json report.html</code></pre>
+    </div>
+    <p class="text-muted small mt-3">
+      Indigo's charts need Plotly (≥ 1.39) on the page already; every other
+      element is self-contained. The bundle lists what it expects in its header
+      banner and on <code>window.TracyVis.requires</code>.
+    </p>
+  </section>
+
+  <section id="teal" class="demo-section">
+    <h2><code>&lt;teal-trace-view&gt;</code></h2>
+    <p>
+      An electropherogram drawn in SVG, from
+      <a href="https://github.com/gear-genomics/teal">teal</a>. It takes a
+      <code>tracy align</code> trace, and also a raw unaligned one like the
+      sample here, which it normalises itself. Zoom, pan and the basecall row
+      are the element's own.
+    </p>
+    <p class="demo-meta">
+      Sample: <a href="data/raw-trace.json">raw-trace.json</a> — teal's own demo
+      trace, 1451 basecalls
+      · <a href="reports/raw-trace.html">self-contained report</a>
+    </p>
+    <div class="demo-stage" id="teal-stage">
+      <teal-trace-view id="teal-trace"></teal-trace-view>
+    </div>
+    <details class="demo-usage">
+      <summary>Markup and JavaScript</summary>
+      <pre><code>&lt;script src="gear-components.js"&gt;&lt;/script&gt;
+
+&lt;teal-trace-view id="trace"&gt;&lt;/teal-trace-view&gt;
+
+&lt;script&gt;
+  document.getElementById('trace').displayData(tracyJson);
+&lt;/script&gt;</code></pre>
+    </details>
+  </section>
+
+  <section id="indigo" class="demo-section">
+    <h2><code>&lt;indigo-*&gt;</code></h2>
+    <p>
+      Four elements from <a href="https://github.com/gear-genomics/indigo">indigo</a>,
+      which decomposes a mixed trace into two alleles: a Plotly trace viewer, an
+      alignment listing, the decomposition error plot, and the variants table.
+      The chart icon on a variant row zooms the trace viewer above it to that
+      variant — the table is handed the viewer, and drives it.
+    </p>
+    <p class="demo-meta">
+      Sample: <a href="data/indigo.json">indigo.json</a> — a small fixture, as
+      indigo publishes no demo output of its own
+      · <a href="reports/indigo.html">self-contained report</a>
+      · <a href="reports/indigo.html?variants-table=0">report linked to variant 0</a>
+    </p>
+    <div class="demo-stage" id="indigo-stage">
+      <h3 class="indigo-subhead">&lt;indigo-trace-view&gt;</h3>
+      <indigo-trace-view id="indigo-trace"></indigo-trace-view>
+
+      <h3 class="indigo-subhead">&lt;indigo-variants-view&gt;</h3>
+      <indigo-variants-view id="indigo-variants"></indigo-variants-view>
+
+      <h3 class="indigo-subhead">&lt;indigo-alignment-view&gt;</h3>
+      <indigo-alignment-view id="indigo-alignment"></indigo-alignment-view>
+
+      <h3 class="indigo-subhead">&lt;indigo-decomposition-view&gt;</h3>
+      <indigo-decomposition-view id="indigo-decomposition"></indigo-decomposition-view>
+    </div>
+    <details class="demo-usage">
+      <summary>Markup and JavaScript</summary>
+      <pre><code>&lt;script src="https://cdn.plot.ly/plotly-1.39.2.min.js"&gt;&lt;/script&gt;
+&lt;script src="gear-components.js"&gt;&lt;/script&gt;
+
+&lt;indigo-trace-view id="trace"&gt;&lt;/indigo-trace-view&gt;
+&lt;indigo-variants-view id="variants"&gt;&lt;/indigo-variants-view&gt;
+&lt;indigo-alignment-view id="alignment"&gt;&lt;/indigo-alignment-view&gt;
+&lt;indigo-decomposition-view id="decomposition"&gt;&lt;/indigo-decomposition-view&gt;
+
+&lt;script&gt;
+  var trace = document.getElementById('trace');
+  trace.displayData(indigoJson);
+  document.getElementById('decomposition').displayData(indigoJson);
+
+  // The table zooms the viewer it is given.
+  document.getElementById('variants').displayData(indigoJson, trace);
+
+  // The alignment view takes the two sequences already shaped, so the page
+  // decides what is labelled what.
+  document.getElementById('alignment').displayData({
+    alt: {
+      sequence: indigoJson.alt1align.replace(/-/g, ''),
+      alignmentString: indigoJson.alt1align,
+      isReverseComplement: false,
+      chromosome: 'Alt1',
+      startPosition: 1,
+      label: 'Alt1',
+      alleleFraction: indigoJson.allele1fraction
+    },
+    ref: {
+      sequence: indigoJson.ref1align.replace(/-/g, ''),
+      alignmentString: indigoJson.ref1align,
+      isReverseComplement: indigoJson.ref1forward === 0,
+      chromosome: indigoJson.ref1chr,
+      startPosition: indigoJson.ref1pos,
+      label: 'Ref'
+    },
+    charactersPerLine: 80,
+    score: indigoJson.align1score
+  });
+&lt;/script&gt;</code></pre>
+    </details>
+  </section>
+
+  <section id="sabre" class="demo-section">
+    <h2><code>&lt;sabre-msa-view&gt;</code></h2>
+    <p>
+      A multiple sequence alignment in wrapped blocks, from
+      <a href="https://github.com/gear-genomics/sabre">sabre</a>. It takes gapped
+      multi-FASTA — the <code>.align.fa</code> that <code>tracy assemble</code>
+      writes — and colours by <strong>column consensus</strong>, so where several
+      reads agree against the reference it is the reference base that is marked.
+      Hover a base: the element reports what the cursor is over as an
+      <code>msa-hover</code> event and leaves the page to place it. Changing
+      characters per line redraws in place, from the attribute.
+    </p>
+    <p class="demo-meta">
+      Sample: <a href="data/alignment.align.fa">alignment.align.fa</a> — two
+      reads against a reference
+      · <a href="reports/alignment.html">self-contained report</a>
+    </p>
+    <div class="demo-stage" id="sabre-stage">
+      <div class="form-inline mb-3">
+        <label class="mr-2 small" for="sabre-chars-per-line">Characters per line</label>
+        <!-- 50 rather than sabre's own 80: a block has to fit beside the
+             hover panel, and the selector is there to widen it. -->
+        <select class="form-control form-control-sm" id="sabre-chars-per-line">
+          <option value="50" selected>50</option>
+          <option value="80">80</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+      <div class="msa-layout">
+        <div class="msa-alignment">
+          <sabre-msa-view id="sabre-alignment" characters-per-line="50"></sabre-msa-view>
+        </div>
+        <div class="msa-info">
+          <h6>Hover information</h6>
+          <div id="sabre-hover-info" class="text-muted">
+            Move the cursor over a base.
+          </div>
+        </div>
+      </div>
+    </div>
+    <details class="demo-usage">
+      <summary>Markup and JavaScript</summary>
+      <pre><code>&lt;script src="gear-components.js"&gt;&lt;/script&gt;
+
+&lt;sabre-msa-view id="alignment" characters-per-line="80"&gt;&lt;/sabre-msa-view&gt;
+&lt;div id="info"&gt;&lt;/div&gt;
+
+&lt;script&gt;
+  var alignment = document.getElementById('alignment');
+
+  alignment.addEventListener('msa-hover', function (event) {
+    document.getElementById('info').innerHTML = event.detail.html;
+  });
+
+  // Setting the property reflects to the attribute, and the element
+  // re-renders from attributeChangedCallback - no redraw button needed.
+  alignment.charactersPerLine = 100;
+
+  alignment.displayData(fastaText);
+&lt;/script&gt;</code></pre>
+    </details>
+  </section>
+
+  <section id="pearl" class="demo-section">
+    <h2><code>&lt;pearl-assembly-view&gt;</code></h2>
+    <p>
+      An editable assembly — several Sanger traces aligned to a reference — from
+      <a href="https://github.com/gear-genomics/pearl">pearl</a>. It brings its
+      own toolbar: the consensus overview is colour coded by agreement,
+      "Jump to next conflict" walks the positions that need a decision, and the
+      electropherograms below show every trace covering the current one. Edits
+      raise <code>assembly-change</code>, and the corrected sequence is on
+      <code>userEditedSequence</code> for the page to save.
+    </p>
+    <p class="demo-meta">
+      Sample: <a href="data/assembly.json">assembly.json</a> — two traces and a
+      consensus
+      · <a href="reports/assembly.html">self-contained report, with a download button</a>
+    </p>
+    <div class="demo-stage" id="pearl-stage">
+      <pearl-assembly-view id="pearl-assembly"></pearl-assembly-view>
+      <p class="text-muted small mt-3 mb-0" id="pearl-status">
+        Edit a base to see what the element reports back.
+      </p>
+    </div>
+    <details class="demo-usage">
+      <summary>Markup and JavaScript</summary>
+      <pre><code>&lt;script src="gear-components.js"&gt;&lt;/script&gt;
+
+&lt;pearl-assembly-view id="assembly"&gt;&lt;/pearl-assembly-view&gt;
+
+&lt;script&gt;
+  var assembly = document.getElementById('assembly');
+
+  assembly.addEventListener('assembly-change', function (event) {
+    console.log(event.detail.editPosition, event.detail.userEditedSequence);
+  });
+
+  // Pass { prepared: true } instead to reopen a saved pearl session
+  // (multipleAlignment.json) with its edits intact.
+  assembly.displayData(pearlJson);
+&lt;/script&gt;</code></pre>
+    </details>
+  </section>
+
+  <section id="sage" class="demo-section">
+    <h2><code>&lt;sage-trace-view&gt;</code></h2>
+    <p>
+      The viewer teal's supersedes, from
+      <a href="https://github.com/gear-genomics/sage">sage</a>. Same class, same
+      entry point; teal's adds raw-trace normalisation, a responsive SVG instead
+      of a fixed 1200px one, and handler cleanup. It is kept registered so a
+      report can still be rendered with the element the earlier ones used, and
+      ships only when asked for by name —
+      <code>--components sage</code>. Both are on this page, which is what the
+      <code>teal-</code> and <code>sage-</code> prefixes are for.
+    </p>
+    <p class="demo-meta">
+      Sample: <a href="data/aligned-trace.json">aligned-trace.json</a> — sage's
+      own demo trace, aligned to a reference
+      · <a href="reports/aligned-trace.html">self-contained report (rendered with teal)</a>
+    </p>
+    <div class="demo-stage" id="sage-stage">
+      <sage-trace-view id="sage-trace"></sage-trace-view>
+    </div>
+    <details class="demo-usage">
+      <summary>Markup and JavaScript</summary>
+      <pre><code>tracy-vis --emit-components viewer.js --components teal,sage
+
+&lt;sage-trace-view id="trace"&gt;&lt;/sage-trace-view&gt;
+
+&lt;script&gt;
+  document.getElementById('trace').displayData(tracyJson);
+&lt;/script&gt;</code></pre>
+    </details>
+  </section>
+
+  <footer class="page-footer">
+    <p>
+      Built from
+      <a href="https://github.com/biosustain/tracy-visualisations">biosustain/tracy-visualisations</a>
+      on every push to <code>main</code>. The components come from teal, indigo,
+      sabre, pearl and sage, vendored as git submodules; this project is
+      distributed under the GPL-3.0 licence because they are.
+    </p>
+  </footer>
+
+</main>
+
+<script src="https://cdn.plot.ly/plotly-1.39.2.min.js" crossorigin="anonymous"></script>
+<script src="gear-components.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  function fetchJson(path) {
+    return fetch(path).then(function (response) {
+      if (!response.ok) {
+        throw new Error(path + ': ' + response.status + ' ' + response.statusText);
+      }
+      return response.json();
+    });
+  }
+
+  function fetchText(path) {
+    return fetch(path).then(function (response) {
+      if (!response.ok) {
+        throw new Error(path + ': ' + response.status + ' ' + response.statusText);
+      }
+      return response.text();
+    });
+  }
+
+  function ungapped(sequence) {
+    return (sequence || '').replace(/-/g, '');
+  }
+
+  // A demo whose fetch failed looks exactly like a component that renders
+  // nothing, so say which file did not arrive rather than leaving an empty box.
+  function reportFailure(stageId, error) {
+    var stage = document.getElementById(stageId);
+    stage.innerHTML = '';
+
+    var note = document.createElement('p');
+    note.className = 'demo-error';
+    note.textContent = 'Could not render this demo — ' + error.message;
+    stage.appendChild(note);
+  }
+
+  function renderRawTrace() {
+    return fetchJson('data/raw-trace.json').then(function (trace) {
+      document.getElementById('teal-trace').displayData(trace);
+    });
+  }
+
+  function renderAlignedTrace() {
+    return fetchJson('data/aligned-trace.json').then(function (trace) {
+      document.getElementById('sage-trace').displayData(trace);
+    });
+  }
+
+  function renderIndigo() {
+    return fetchJson('data/indigo.json').then(function (data) {
+      var traceView = document.getElementById('indigo-trace');
+
+      // The viewer defaults to the first 500 signal positions, which is sized
+      // for a real trace and leaves this short sample a sliver at the origin.
+      // chartConfig is the element's own way to be told otherwise.
+      traceView.displayData(Object.assign({}, data, {
+        chartConfig: { x: { axis: { range: [0, data.pos.length - 1] } } }
+      }));
+      document.getElementById('indigo-decomposition').displayData(data);
+
+      // The alignment view takes the two sequences already shaped, so the page
+      // decides which is the alternative allele and which the reference.
+      document.getElementById('indigo-alignment').displayData({
+        alt: {
+          sequence: ungapped(data.alt1align),
+          alignmentString: data.alt1align,
+          isReverseComplement: false,
+          chromosome: 'Alt1',
+          startPosition: 1,
+          label: 'Alt1',
+          alleleFraction: data.allele1fraction
+        },
+        ref: {
+          sequence: ungapped(data.ref1align),
+          alignmentString: data.ref1align,
+          isReverseComplement: data.ref1forward === 0,
+          chromosome: data.ref1chr,
+          startPosition: data.ref1pos,
+          label: 'Ref'
+        },
+        charactersPerLine: 80,
+        score: data.align1score
+      });
+
+      // Handing the table the viewer is what makes a row's chart icon zoom it.
+      document.getElementById('indigo-variants').displayData(data, traceView);
+    });
+  }
+
+  function renderAlignment() {
+    var alignment = document.getElementById('sabre-alignment');
+    var info = document.getElementById('sabre-hover-info');
+    var charsPerLine = document.getElementById('sabre-chars-per-line');
+
+    alignment.addEventListener('msa-hover', function (event) {
+      info.classList.remove('text-muted');
+      info.innerHTML = event.detail.html;
+    });
+
+    charsPerLine.addEventListener('change', function () {
+      alignment.charactersPerLine = this.value;
+    });
+
+    return fetchText('data/alignment.align.fa').then(function (fasta) {
+      alignment.displayData(fasta);
+    });
+  }
+
+  function renderAssembly() {
+    var assembly = document.getElementById('pearl-assembly');
+    var status = document.getElementById('pearl-status');
+
+    assembly.addEventListener('assembly-change', function (event) {
+      status.textContent =
+        'assembly-change at position ' + (event.detail.editPosition + 1) +
+        ' — the page saves the edit, the element does not.';
+    });
+
+    return fetchJson('data/assembly.json').then(function (data) {
+      assembly.displayData(data);
+    });
+  }
+
+  var demos = [
+    { stage: 'teal-stage', render: renderRawTrace },
+    { stage: 'indigo-stage', render: renderIndigo },
+    { stage: 'sabre-stage', render: renderAlignment },
+    { stage: 'pearl-stage', render: renderAssembly },
+    { stage: 'sage-stage', render: renderAlignedTrace }
+  ];
+
+  // One failed sample must not take the rest of the page with it.
+  demos.forEach(function (demo) {
+    try {
+      Promise.resolve(demo.render()).catch(function (error) {
+        reportFailure(demo.stage, error);
+      });
+    } catch (error) {
+      reportFailure(demo.stage, error);
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -9,6 +9,12 @@
   //                  component's own JavaScript can be debugged. The
   //                  vendored source is inlined into the generated page, so
   //                  set those breakpoints in build/debug/<name>.html.
+  //
+  // The demo site published to GitHub Pages gets the same pair, except that
+  // its browser configuration goes through a local web server: the page
+  // fetches its samples, which fetch() refuses to do over file://. The build
+  // copies demo/index.html into site/, so that copy is what the debugger
+  // opens - edit demo/index.html, the source, and rebuild.
   "version": "0.2.0",
   "configurations": [
     {
@@ -95,6 +101,17 @@
       "preLaunchTask": "debug: create output dir"
     },
     {
+      "name": "Python: build demo site",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/build_demo_site.py",
+      "args": ["--output", "${workspaceFolder}/site"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
       "name": "Browser: teal (trace)",
       "type": "chrome",
       "request": "launch",
@@ -129,6 +146,19 @@
       "preLaunchTask": "bundle: sabre (msa)",
       "userDataDir": "${workspaceFolder}/build/debug/chrome-profile",
       "webRoot": "${workspaceFolder}/build/debug"
+    },
+    {
+      // Rebuilds the site, serves it, and opens the page. Edit
+      // demo/index.html, then run the "demo: build site" task and reload the
+      // browser - the server keeps running, so only the copy into site/ has
+      // to be redone. The port has to match tasks.json.
+      "name": "Browser: demo site (GitHub Pages)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://127.0.0.1:8371/",
+      "preLaunchTask": "demo: serve site",
+      "userDataDir": "${workspaceFolder}/build/debug/chrome-profile",
+      "webRoot": "${workspaceFolder}/site"
     },
     {
       "name": "Pytest: all tests",
