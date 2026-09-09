@@ -520,7 +520,7 @@ class TestCLIEmitComponents:
         out = tmp_path / "bundle.js"
 
         # When it is requested
-        result = self._run("--emit-components", str(out), "--components", "sage")
+        result = self._run("--emit-components", str(out), "--components", "nope")
 
         # Then it names what is available rather than writing an empty bundle
         assert result.returncode == 1

@@ -228,9 +228,48 @@ class TestBuildBundle:
         # When the default set is computed
         names = default_bundle_components()
 
-        # Then it holds every component: namespaced tags and per-component
-        # scoping mean nothing collides any more, indigo included
+        # Then it holds every component teal did not supersede: namespaced
+        # tags and per-component scoping mean nothing collides any more,
+        # indigo included, but sage is left for whoever asks for it by name
         assert names == ["teal", "indigo", "pearl", "sabre"]
+
+    def test_leaves_a_superseded_component_out_of_the_default_set(self):
+        from tracy_visualisations.components import (
+            COMPONENTS,
+            default_bundle_components,
+        )
+
+        # Given sage, which teal replaced as the trace viewer
+        assert "sage" in COMPONENTS
+
+        # When the default set is computed
+        names = default_bundle_components()
+
+        # Then it is absent, so the default bundle does not carry two
+        # near-identical trace viewers
+        assert "sage" not in names
+
+    def test_a_superseded_component_still_bundles_when_asked_for(self):
+        from tracy_visualisations.components import build_bundle
+
+        # Given sage requested by name
+        # When it is bundled
+        bundle = build_bundle(["sage"])
+
+        # Then it is emitted under its own namespaced tag
+        assert 'defineElement("sage-trace-view", TraceViewElement)' in bundle
+
+    def test_sage_and_teal_ship_together(self):
+        from tracy_visualisations.components import build_bundle
+
+        # Given the old trace viewer and the one that replaced it
+        # When both are bundled
+        bundle = build_bundle(["sage", "teal"])
+
+        # Then both register, because the tags are namespaced by app and each
+        # TraceViewElement is emitted in its own scope
+        assert 'defineElement("sage-trace-view"' in bundle
+        assert 'defineElement("teal-trace-view"' in bundle
 
     def test_every_registered_component_is_now_bundle_safe(self):
         from tracy_visualisations.components import COMPONENTS

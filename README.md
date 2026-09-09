@@ -17,6 +17,8 @@ The components come from [Teal](https://github.com/gear-genomics/teal),
 [Indigo](https://github.com/gear-genomics/indigo),
 [Sabre](https://github.com/gear-genomics/sabre) and
 [Pearl](https://github.com/gear-genomics/pearl), vendored as git submodules.
+[Sage](https://github.com/gear-genomics/sage) is vendored too: teal's trace
+viewer replaced it, but it stays available under `--components sage`.
 
 Two input formats are accepted: Tracy's JSON output (`tracy align` /
 `tracy decompose`), and a gapped multi-FASTA alignment such as the `.align.fa`
@@ -128,9 +130,10 @@ tracy-vis --emit-components gear-components.js
 ```
 
 Every tag is namespaced with the app it came from — `teal-`, `indigo-`,
-`sabre-`, `pearl-`. Two of these apps ship a viewer they both call a *trace
-view*: teal draws one in SVG, indigo draws one with Plotly. The prefix keeps
-them tellable apart, and lets a page use both.
+`sabre-`, `pearl-`, `sage-`. Several of these apps ship a viewer they all call
+a *trace view*: teal draws one in SVG, indigo draws one with Plotly, and sage
+draws the SVG teal's supersedes. The prefix keeps them tellable apart, and lets
+one page use them all.
 
 The bundle is plain classic JavaScript — no module loader, no build step. It
 carries its own CSS, injects it once on load, and registers each element only
@@ -154,9 +157,10 @@ tracy-vis --emit-components viewer.js --components teal,sabre
 ```
 
 Components are selected by the app they come from: `teal`, `indigo`, `sabre`,
-`pearl`. The default is all of them — each is emitted in its own scope, so two
-apps that happen to declare an identically named class (teal and indigo both
-have a `TraceViewElement`) no longer clash.
+`pearl`, `sage`. The default is all but `sage`, which teal's viewer superseded
+and which therefore only ships when asked for by name. Each component is
+emitted in its own scope, so apps that happen to declare an identically named
+class (teal, indigo and sage all have a `TraceViewElement`) no longer clash.
 
 One caveat: **some elements need a global.** Indigo's charts require Plotly
 (≥ 1.39) to be on the page already; the bundle lists what it expects in its

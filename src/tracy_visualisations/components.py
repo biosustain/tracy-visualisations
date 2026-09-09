@@ -89,6 +89,10 @@ class Component:
     # can. An app that still resolves page elements at module scope only works
     # inside a template that provides them.
     standalone_blocker: Optional[str] = None
+    # False for a component another one supersedes: still selectable by name,
+    # but kept out of the default bundle so it does not ship a second,
+    # near-identical viewer to every page that takes the defaults.
+    in_default_bundle: bool = True
 
     @property
     def tags(self) -> Tuple[str, ...]:
@@ -119,6 +123,15 @@ COMPONENTS: dict[str, Component] = {
         name="teal",
         sources=(_VENDOR / "teal/client/src/static/js/traceView.js",),
         elements=(("trace-view", "TraceViewElement"),),
+    ),
+    # The viewer teal's supersedes, kept registered so a report can still be
+    # rendered with the element the earlier ones used. Same class and entry
+    # point as teal's, so it is namespaced apart rather than merged.
+    "sage": Component(
+        name="sage",
+        sources=(_VENDOR / "sage/client/src/static/js/traceView.js",),
+        elements=(("trace-view", "TraceViewElement"),),
+        in_default_bundle=False,
     ),
     "indigo": Component(
         name="indigo",
@@ -340,6 +353,8 @@ def default_bundle_components() -> list[str]:
     chosen: list[Component] = []
     for component in COMPONENTS.values():
         if component.standalone_blocker is not None:
+            continue
+        if not component.in_default_bundle:
             continue
         try:
             _reject_conflicts(chosen + [component])
