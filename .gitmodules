@@ -10,3 +10,6 @@
 [submodule "src/tracy_visualisations/vendor/pearl"]
 	path = src/tracy_visualisations/vendor/pearl
 	url = https://github.com/Skitionek/pearl
+[submodule "src/tracy_visualisations/vendor/sage"]
+	path = src/tracy_visualisations/vendor/sage
+	url = https://github.com/gear-genomics/sage

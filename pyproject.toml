@@ -36,6 +36,7 @@ where = ["src"]
 # tests/test_vendor.py fails if the registry references a file not listed here.
 "tracy_visualisations" = [
     "vendor/teal/client/src/static/js/traceView.js",
+    "vendor/sage/client/src/static/js/traceView.js",
     "vendor/indigo/client/src/static/js/elements.js",
     "vendor/pearl/client/src/static/js/pearl.js",
     "vendor/sabre/client/src/static/js/sabre.js",
